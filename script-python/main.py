@@ -19,7 +19,7 @@ tarefas_jsp = [
     {"id_t": 12, "job_id": 4, "machine_id": 3, "duration": 4, "next_t": None, "prev_t": 11},
 ]
 
-SETUP_TIME = 2  # Deve ser igual ao definido no Haskell
+SETUP_TIME = 0  # Deve ser igual ao definido no Haskell
 
 def plotar_gantt(resultado, makespan_z3, makespan_h):
     fig, ax = plt.subplots(figsize=(12, 6))

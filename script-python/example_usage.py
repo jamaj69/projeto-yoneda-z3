@@ -42,10 +42,12 @@ def solve_instance_with_hybrid_system(instance_filepath: str, setup_time: int = 
     
     h_makespan = res.get("makespan_heuristic")
     hints = res.get("hints")
-    print(f"✅ Makespan Haskell (heurística): {h_makespan}h")
+    print(f"✅ Makespan Haskell (heurística MWR+SPT): {h_makespan}h")
+    print(f"💡 Hints disponíveis (info apenas, não usados como constraints)")
     
     # 3. Resolver com Z3
     print(f"\n🧮 Resolvendo com Z3 Theorem Prover...")
+    print(f"   (Hints do Haskell usados apenas como referência, não limitam a busca)")
     opt = Optimize()
     starts = {t["id_t"]: Int(f"s_{t['id_t']}") for t in instance['tasks']}
     makespan = Int('makespan')
@@ -55,9 +57,8 @@ def solve_instance_with_hybrid_system(instance_filepath: str, setup_time: int = 
         tid, dur = t["id_t"], t["duration"]
         opt.add(starts[tid] >= 0)
         
-        # Hint do Haskell como soft constraint
-        if str(tid) in hints:
-            opt.add_soft(starts[tid] == hints[str(tid)], weight=1)
+        # ❌ NÃO usar hints como constraints (nem soft)
+        # Os hints são apenas para informação/comparação
         
         # Precedência dentro do job
         if t["next_t"]:

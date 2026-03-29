@@ -1,4 +1,5 @@
 *~
 *.swp
 tarballs/
-.stack-work/
+.stack-work/*.pyc
+__pycache__/
