@@ -17,7 +17,10 @@
   "python.analysis.stubPath": "",
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingImports": "none",
-    "reportMissingTypeStubs": "none"
+    "reportMissingTypeStubs": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportOptionalMemberAccess": "none",
+    "reportWildcardImportFromLibrary": "none"
   },
   "haskell.serverEnvironment": {
     "PATH": "${HOME}/.local/bin:${PATH}"
