@@ -242,7 +242,13 @@
     "calc",
     "util",
     "init",
-    "opts"
+    "opts",
+    "mpatches",
+    "xlabel",
+    "ylabel",
+    "yticks",
+    "yticklabels",
+    "otimizacao"
   ],
   "flagWords": [],
   "ignoreRegExpList": [

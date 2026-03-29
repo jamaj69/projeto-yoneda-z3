@@ -20,7 +20,8 @@
     "reportMissingTypeStubs": "none",
     "reportAttributeAccessIssue": "none",
     "reportOptionalMemberAccess": "none",
-    "reportWildcardImportFromLibrary": "none"
+    "reportWildcardImportFromLibrary": "none",
+    "reportArgumentType": "none"
   },
   "haskell.serverEnvironment": {
     "PATH": "${HOME}/.local/bin:${PATH}"
