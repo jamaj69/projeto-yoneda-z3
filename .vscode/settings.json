@@ -43,6 +43,11 @@
     "**/.venv": true,
     "**/venv": true
   },
+  "ltex.language": "pt-BR",
+  "ltex.enabled": [
+    "markdown"
+  ],
+  "ltex.additionalRules.motherTongue": "pt-BR",
   "[markdown]": {
     "editor.wordWrap": "on",
     "editor.quickSuggestions": {
