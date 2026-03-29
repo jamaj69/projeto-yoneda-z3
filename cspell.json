@@ -120,6 +120,7 @@
     "orlib",
     "jjvh",
     "cpython",
+    "pycache",
     "pyc",
     "pyo",
     "pytest",
