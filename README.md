@@ -89,13 +89,43 @@ Sucesso: O Z3 melhorou a heurística em 2h!
 [Gráfico de Gantt é exibido]
 ```
 
-## 📊 Exemplo de Problema
+## 📊 Instâncias de Benchmark
 
-O problema padrão em `main.py` é um **JSSP 4×3** (4 jobs, 3 máquinas):
+O projeto inclui **242 instâncias clássicas** de JSSP de 8 benchmarks reconhecidos:
 
-- **Setup Time**: 2 horas entre jobs diferentes na mesma máquina
-- **Restrições**: Precedência de tarefas dentro de cada job
-- **Objetivo**: Minimizar o makespan (tempo total de conclusão)
+| Benchmark | Instâncias | Descrição |
+|-----------|------------|----------|
+| **FisherThompson1963** | 3 | Instâncias clássicas 6×6, 10×10, 20×5 |
+| **Lawrence1984** | 40 | Problemas la01-la40 (10-30 jobs, 5-15 máquinas) |
+| **Taillard1993** | 80 | Instâncias difíceis ta01-ta80 (15-100 jobs) |
+| **AdamsBalasZawack1988** | 5 | Problemas desafiadores |
+| **ApplegateCook1991** | 10 | Benchmarks da década de 90 |
+| **DemirkolMehtaUzsoy1998** | 80 | Problemas de escala variada |
+| **StorerWuVaccari1992** | 20 | Instâncias para comparação |
+| **YamadaNakano1992** | 4 | Benchmarks japoneses |
+
+### 🔧 Carregando Instâncias
+
+```python
+from script-python.instance_loader import load_instance
+
+# Carregar instância específica
+instance = load_instance("instances/FisherThompson1963/ft06.txt")
+print(f"Jobs: {instance['num_jobs']}, Máquinas: {instance['num_machines']}")
+
+# As tarefas já estão no formato TaskReq para o Haskell
+tasks = instance['tasks']
+```
+
+### 🚀 Resolvendo Instâncias
+
+```bash
+# Resolver instância específica
+python script-python/example_usage.py instances/FisherThompson1963/ft06.txt
+
+# Ou usar o problema exemplo em main.py
+python script-python/main.py
+```
 
 ## 🧪 Testes
 
@@ -160,7 +190,14 @@ stack exec -- haskell-engine-exe --verbose
 ├── app-haskell/
 │   └── src/Main.hs          # Servidor web Haskell + heurística
 ├── script-python/
-│   └── main.py              # Cliente Python + Z3 solver
+│   ├── main.py              # Cliente Python + Z3 solver (exemplo básico)
+│   ├── instance_loader.py   # Carregador de instâncias de benchmarks
+│   └── example_usage.py     # Exemplos de uso com instâncias reais
+├── instances/               # 242 instâncias de 8 benchmarks clássicos
+│   ├── FisherThompson1963/
+│   ├── Lawrence1984/
+│   ├── Taillard1993/
+│   └── ...
 ├── src/
 │   ├── Types.hs             # Tipos da aplicação Haskell
 │   ├── Run.hs               # Lógica de execução
