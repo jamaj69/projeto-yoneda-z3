@@ -86,6 +86,7 @@
     "máquina",
     "precedência",
     "precedence",
+    "prec",
     "constraints",
     "constraint",
     "restrições",
@@ -233,7 +234,14 @@
     "namedtuple",
     "dataclass",
     "async",
-    "await"
+    "await",
+    "num",
+    "dur",
+    "tid",
+    "calc",
+    "util",
+    "init",
+    "opts"
   ],
   "flagWords": [],
   "ignoreRegExpList": [
