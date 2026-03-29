@@ -8,15 +8,16 @@ O `instance_loader.py` fornece funções para carregar e converter instâncias d
 
 As instâncias seguem o formato padrão da literatura:
 
-```
+```text
 num_jobs num_machines
 machine_1 duration_1 machine_2 duration_2 ... (Job 1)
 machine_1 duration_1 machine_2 duration_2 ... (Job 2)
 ...
 ```
 
-**Exemplo: ft06.txt**
-```
+### Exemplo: ft06.txt
+
+```text
 6 6
 2 1 0 3 1 6 3 7 5 3 4 6
 1 8 2 5 4 10 5 10 0 10 3 4
@@ -40,6 +41,7 @@ num_jobs, num_machines, jobs = parse_jssp_file("instances/FisherThompson1963/ft0
 ```
 
 **Retorna:**
+
 - `num_jobs`: Número de jobs
 - `num_machines`: Número de máquinas
 - `jobs`: Lista de listas com tuplas (machine_id, duration)
@@ -60,6 +62,7 @@ tasks = jssp_to_tasks(jobs)
 ```
 
 **Retorna:**
+
 - Lista de dicionários com campos: `id_t`, `job_id`, `machine_id`, `duration`, `next_t`, `prev_t`
 
 ### 3. `load_instance(filepath)`
@@ -147,16 +150,16 @@ python script-python/example_usage.py instances/FisherThompson1963/ft06.txt
 
 ## 📊 Benchmarks Disponíveis
 
-| Benchmark | Instâncias | Dimensões | Dificuldade |
-|-----------|------------|-----------|-------------|
-| **FisherThompson1963** | 3 | 6×6, 10×10, 20×5 | Clássicas (fácil) |
-| **Lawrence1984** | 40 | 10-30 jobs, 5-15 máquinas | Média |
-| **Taillard1993** | 80 | 15-100 jobs | Difícil |
-| **AdamsBalasZawack1988** | 5 | 10×10, 20×15 | Desafiador |
-| **ApplegateCook1991** | 10 | 10×10 | Média |
-| **DemirkolMehtaUzsoy1998** | 80 | Variado | Média-Difícil |
-| **StorerWuVaccari1992** | 20 | Variado | Média |
-| **YamadaNakano1992** | 4 | 20×20 | Difícil |
+| Benchmark                  | Instâncias | Dimensões                 | Dificuldade       |
+| -------------------------- | ---------- | ------------------------- | ----------------- |
+| **FisherThompson1963**     | 3          | 6×6, 10×10, 20×5          | Clássicas (fácil) |
+| **Lawrence1984**           | 40         | 10-30 jobs, 5-15 máquinas | Média             |
+| **Taillard1993**           | 80         | 15-100 jobs               | Difícil           |
+| **AdamsBalasZawack1988**   | 5          | 10×10, 20×15              | Desafiador        |
+| **ApplegateCook1991**      | 10         | 10×10                     | Média             |
+| **DemirkolMehtaUzsoy1998** | 80         | Variado                   | Média-Difícil     |
+| **StorerWuVaccari1992**    | 20         | Variado                   | Média             |
+| **YamadaNakano1992**       | 4          | 20×20                     | Difícil           |
 
 ### Recomendações por Tamanho
 
@@ -175,7 +178,8 @@ python instance_loader.py
 ```
 
 **Saída:**
-```
+
+```text
 📁 Benchmarks disponíveis: 8
   • FisherThompson1963: 3 instâncias
   • Lawrence1984: 40 instâncias
@@ -197,13 +201,13 @@ print_instance_summary(instance)
 
 ## ⚡ Performance
 
-| Operação | Tempo | Descrição |
-|----------|-------|-----------|
-| `parse_jssp_file()` | <1ms | Parse de arquivo .txt |
-| `jssp_to_tasks()` | <1ms | Conversão para TaskReq |
-| `list_all_instances()` | ~50ms | Busca recursiva (242 arquivos) |
-| Haskell validation (ft06) | ~100ms | 36 tarefas |
-| Z3 optimization (ft06) | 1-5s | 36 variáveis |
+| Operação                  | Tempo  | Descrição                       |
+| ------------------------- | ------ | ------------------------------- |
+| `parse_jssp_file()`       | <1ms   | Parse de arquivo .txt           |
+| `jssp_to_tasks()`         | <1ms   | Conversão para TaskReq          |
+| `list_all_instances()`    | ~50ms  | Busca recursiva (242 arquivos)  |
+| Haskell validation (ft06) | ~100ms | 36 tarefas                      |
+| Z3 optimization (ft06)    | 1-5s   | 36 variáveis                    |
 
 ## 🐛 Troubleshooting
 
@@ -239,9 +243,9 @@ response = requests.post("http://localhost:3000/validate",
 
 ## 📖 Referências
 
-- **Formato JSSP**: http://jobshop.jjvh.nl/
-- **Benchmarks OR-Library**: http://people.brunel.ac.uk/~mastjjb/jeb/info.html
-- **Taillard Instances**: http://mistic.heig-vd.ch/taillard/problemes.dir/ordonnancement.dir/ordonnancement.html
+- **Formato JSSP**: <http://jobshop.jjvh.nl/>
+- **Benchmarks OR-Library**: <http://people.brunel.ac.uk/~mastjjb/jeb/info.html>
+- **Taillard Instances**: <http://mistic.heig-vd.ch/taillard/problemes.dir/ordonnancement.dir/ordonnancement.html>
 
 ## 🎯 Próximos Passos
 

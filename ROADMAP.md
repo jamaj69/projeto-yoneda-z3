@@ -39,6 +39,7 @@ swapTasksOnCriticalMachine m tasks starts =
 ```
 
 **Teste esperado**:
+
 - abz5: 1451h → ~1350h (8% de melhoria adicional)
 - Tempo: +50ms (ainda muito rápido)
 
@@ -53,6 +54,7 @@ shiftCriticalTask task slack starts =
 ```
 
 **Benefício esperado**:
+
 - Encontrar soluções localmente ótimas
 - Reduzir gap Z3: 15% → 8%
 
@@ -68,6 +70,7 @@ balanceMachineLoad machines =
 ```
 
 **Resultado esperado**:
+
 - Máquinas mais equilibradas (60% → 75% uso médio)
 - Redução de gargalos
 
@@ -98,6 +101,7 @@ def optimize_with_fixed_tasks(tasks, hints, slacks, critical_path):
 ```
 
 **Benefício**:
+
 - ✅ Espaço de busca: O(n^n) → O((0.05n)^n) = **redução massiva**
 - ✅ Tempo: 10s → ~2s (5x mais rápido)
 - ⚠️ Risco: Pode perder ótimo global se análise de slack estiver imprecisa
@@ -140,6 +144,7 @@ def plot_with_critical_path(solution, slacks):
 ```
 
 **Saída visual**:
+
 - 🔴 Vermelho: Tarefas críticas (slack=0)
 - 🟠 Laranja: Quase críticas (slack<10)
 - 🟢 Verde: Com folga (slack≥10)
@@ -199,7 +204,7 @@ def plot_machine_utilization(machine_util):
 ### v0.4.0 (Refinamento Local)
 
 | Métrica | Atual (v0.3.0) | Meta (v0.4.0) | Melhoria |
-|---------|----------------|---------------|----------|
+| ------- | -------------- | ------------- | -------- |
 | **Makespan abz5** | 1451h | ≤1350h | -7% |
 | **Gap vs Z3** | 15% | ≤10% | -33% |
 | **Tempo Heurística** | 8ms | ≤60ms | +650% OK |
@@ -208,7 +213,7 @@ def plot_machine_utilization(machine_util):
 ### v0.5.0 (Z3 Focado)
 
 | Métrica | Atual (v0.3.0) | Meta (v0.5.0) | Melhoria |
-|---------|----------------|---------------|----------|
+| ------- | -------------- | ------------- | -------- |
 | **Tempo Z3** | 10s | ≤3s | -70% |
 | **Qualidade** | 1234h | 1234h | Mantém ótimo |
 | **Espaço busca** | 100% | ~10% | -90% |
@@ -217,14 +222,14 @@ def plot_machine_utilization(machine_util):
 
 ## 🎓 Aprendizados e Insights
 
-### Do que funcionou bem:
+### Do que funcionou bem
 
 1. **MWR+SPT**: Melhoria drástica com lógica simples
 2. **Z3 sem hints**: Remover constraints foi contra-intuitivo mas correto
 3. **Benchmarks**: 242 instâncias dão confiança estatística
 4. **Análise de slack**: Revela estrutura do problema
 
-### Do que precisa de atenção:
+### Do que precisa de atenção
 
 1. **Slack calculation**: Apenas 1 tarefa crítica em abz5 parece baixo
    - Pode ser erro no cálculo de LST (Latest Start Time)
@@ -237,7 +242,7 @@ def plot_machine_utilization(machine_util):
 
 ## 📅 Timeline Proposto
 
-```
+```text
 Semana 1-2:  Implementar refinamento local (swaps + shifts)
 Semana 3:    Testes em todos os 242 benchmarks
 Semana 4:    Otimização Z3 focada (fixar não-críticas)
@@ -257,6 +262,7 @@ Se você quiser implementar alguma dessas features:
 4. Pull request com descrição detalhada
 
 **Prioridades sugeridas**:
+
 - 🔥 Alta: Refinamento local (impacto imediato)
 - 🔶 Média: Z3 focado (otimização importante)
 - 🔹 Baixa: Visualizações (nice to have)
@@ -266,16 +272,19 @@ Se você quiser implementar alguma dessas features:
 ## 📖 Referências para Implementação
 
 ### Refinamento Local
+
 - Aarts & Lenstra (1997): "Local Search in Combinatorial Optimization"
 - Taillard (1993): Tabu search original para JSSP
 - Nowicki & Smutnicki (1996): i-TSAB algorithm
 
 ### Critical Path Analysis
+
 - Kelley & Walker (1959): CPM (Critical Path Method)
 - Roy (1959): PERT analysis
 - Johnson (1954): Algorithms for JSSP
 
 ### Z3 Optimization
+
 - Bjørner & Phan (2014): "νZ - Maximal Satisfaction with Z3"
 - SMT-LIB 2.0: Optimization extensions
 - Microsoft Z3 Documentation: Tactics & Strategies

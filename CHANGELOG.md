@@ -11,6 +11,7 @@ and this project adheres to the
 ## 0.3.0.0 - 2026-04-01
 
 ### Added
+
 - **Análise de Gargalos (Bottleneck Detection)**
   - `computeSlack`: Calcula folga (slack) de cada tarefa
   - `findCriticalPath`: Identifica tarefas com slack=0 (caminho crítico)
@@ -25,16 +26,19 @@ and this project adheres to the
 - **Documentação**: [BOTTLENECK_ANALYSIS.md](docs/BOTTLENECK_ANALYSIS.md)
 
 ### Changed
+
 - `solveWithRefinement` agora retorna tupla com slacks e caminho crítico
 - JSON de resposta expandido com campos de análise de gargalos
 
 ### Performance
+
 - Análise de gargalos adiciona ~3ms ao tempo de heurística (8ms total)
 - Fornece insights para otimização focada em pontos críticos
 
 ## 0.2.0.0 - 2026-03-30
 
 ### Added
+
 - **Heurística MWR+SPT (Most Work Remaining + Shortest Processing Time)**
   - Calcula trabalho total restante por job
   - Prioriza jobs com mais trabalho pendente
@@ -54,15 +58,18 @@ and this project adheres to the
   - [WHY_NOT_OPTIMAL.md](docs/WHY_NOT_OPTIMAL.md): Explicação de não-determinismo Z3
 
 ### Changed
+
 - Heurística de toposort simples → MWR+SPT list scheduling
 - Hints removidos de soft constraints do Z3 (eram limitantes)
 - Setup time: 2h → 0h (comparação com literatura)
 
 ### Fixed
+
 - Hints não limitam mais a busca do Z3
 - Z3 agora encontra soluções ótimas (1234h em abz5)
 
 ### Performance
+
 - **Heurística**: 6446h → 1451h em abz5 (**77% de melhoria!**)
 - **Z3**: Agora encontra 1234h (ótimo) em ~10s
 - **Gap**: 1.3% acima do ótimo conhecido (excelente para JSSP)
@@ -70,6 +77,7 @@ and this project adheres to the
 ## 0.1.0.0 - 2026-03-25
 
 ### Added
+
 - Servidor Haskell com Scotty (porta 3000)
 - Endpoint `/validate` para validação de grafos de precedência
 - Heurística básica de toposort para scheduling
@@ -80,6 +88,7 @@ and this project adheres to the
 - Setup time entre tarefas do mesmo job (padrão: 2h)
 
 ### Performance
+
 - Heurística toposort: ~1ms para 100 tarefas
 - Validação de grafos: O(n + m)
 - Z3 otimização: ~10s para problemas 10×10

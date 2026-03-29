@@ -3,6 +3,7 @@
 ## 🎯 Objetivo
 
 Detectar **pontos críticos** (bottlenecks) na solução heurística para:
+
 1. Entender quais tarefas/máquinas limitam o makespan
 2. Focar esforços de otimização onde terão mais impacto
 3. Melhorar qualidade dos hints para o Z3
@@ -12,40 +13,48 @@ Detectar **pontos críticos** (bottlenecks) na solução heurística para:
 ### 1. Análise de Slack (Folga)
 
 **O que é Slack?**
+
 - Quantidade de tempo que uma tarefa pode **atrasar** sem afetar o makespan total
 - Tarefas com slack = 0 estão no **caminho crítico**
 
 **Cálculo:**
+
 ```haskell
 Slack(tarefa) = Latest Start Time - Earliest Start Time
 ```
 
 **Interpretação:**
+
 - `Slack = 0` → Tarefa **crítica** (não pode atrasar)
 - `Slack > 0` → Tarefa tem folga (pode ser otimizada depois)
 
 ### 2. Caminho Crítico (Critical Path)
 
 **Definição:**
+
 - Sequência de tarefas com slack = 0 que determina o makespan
 - Qualquer atraso nessas tarefas **aumenta o makespan**
 
 **Por que importa:**
+
 - Otimizar tarefas críticas tem **impacto direto** no makespan
 - Otimizar tarefas não-críticas pode não melhorar nada
 
 ### 3. Análise de Utilização de Máquinas
 
 **Cálculo:**
+
 ```haskell
 Utilização(máquina) = Tempo_Total_Trabalhado / Makespan
 ```
 
 **Interpretação:**
+
 - `Utilização > 90%` → **Gargalo** (máquina muito ocupada)
 - `Utilização < 50%` → Ociosidade (pode receber mais tarefas)
 
 **Impacto:**
+
 - Máquinas com alta utilização são candidatas para:
   - Reordenamento de tarefas
   - Minimização de setup times
@@ -55,7 +64,7 @@ Utilização(máquina) = Tempo_Total_Trabalhado / Makespan
 
 ### Teste com abz5 (10×10, 100 tarefas)
 
-```
+```text
 ===== HASKELL (Heurística MWR+SPT + Análise) =====
 Makespan:              1451h
 Caminho crítico:       1 tarefa
@@ -72,6 +81,7 @@ Tarefas críticas:      6 (na solução ótima)
 ### Análise
 
 **Observações:**
+
 1. **Utilização baixa** (59.8%) → Espaço para melhoria no balanceamento
 2. **Poucas tarefas críticas** na heurística → Muita folga desnecessária
 3. **Z3 redistribuiu o trabalho** → Mais tarefas críticas (6) = melhor balanceamento
@@ -90,6 +100,7 @@ solveWithRefinement tasks =
 ```
 
 **Retorna para o Python:**
+
 - `hints`: Tempos de início de cada tarefa
 - `makespan_heuristic`: Tempo total
 - `slacks`: Folga de cada tarefa
@@ -115,6 +126,7 @@ swapTasksOnMachine m tasks =
 ```
 
 **Quando aplicar:**
+
 - Máquina com utilização > 90%
 - Tarefas sem dependência direta entre si
 
@@ -127,6 +139,7 @@ reorderByDeadline = sortBy (comparing latestFinishTime)
 ```
 
 **Quando aplicar:**
+
 - Após identificar caminho crítico
 - Priorizar tarefas que terminam no makespan
 
@@ -143,6 +156,7 @@ balanceMachines machines =
 ```
 
 **Quando aplicar:**
+
 - Diferença de utilização > 30% entre máquinas
 - Quando há flexibilidade de sequenciamento
 
@@ -165,11 +179,13 @@ for task in critical_tasks:
 ```
 
 **Vantagens:**
+
 - ✅ Reduz espaço de busca drasticamente
 - ✅ Z3 foca onde realmente importa
 - ✅ Converge mais rápido
 
 **Desvantagens:**
+
 - ⚠️ Pode perder ótimo global se análise de slack estiver errada
 - ⚠️ Requer slack calculado corretamente
 
@@ -190,7 +206,7 @@ def plot_with_slack(solution, slacks):
         else:
             color = 'green'    # Com folga
         
-        plt.barh(task.machine, task.duration, 
+        plt.barh(task.machine, task.duration,
                 left=task.start, color=color)
 ```
 
@@ -200,10 +216,10 @@ def plot_with_slack(solution, slacks):
 def plot_utilization(machine_util):
     machines = list(machine_util.keys())
     utils = [machine_util[m] * 100 for m in machines]
-    
-    colors = ['red' if u > 90 else 'orange' if u > 70 else 'green' 
+
+    colors = ['red' if u > 90 else 'orange' if u > 70 else 'green'
               for u in utils]
-    
+
     plt.bar(machines, utils, color=colors)
     plt.axhline(y=90, color='r', linestyle='--', label='Gargalo (90%)')
     plt.ylabel('Utilização (%)')
@@ -212,7 +228,7 @@ def plot_utilization(machine_util):
 ## 📈 Comparação com Abordagens Tradicionais
 
 | Abordagem | makespan | Tempo | Comentário |
-|-----------|----------|-------|------------|
+| ----------- | -------- | ----- | ------------ |
 | **Heurística simples** | 6446h | 1ms | Toposort ingênuo |
 | **Heurística MWR+SPT** | 1451h | 5ms | +77% melhor! |
 | **+ Análise Gargalos** | 1451h | 8ms | Info para refinamento |
@@ -229,6 +245,7 @@ python script-python/solve_with_bottlenecks.py instances/abz5.txt
 ```
 
 **Saída:**
+
 - Identificação de tarefas críticas
 - Máquinas gargalo
 - Comparação heurística vs Z3
@@ -238,9 +255,9 @@ python script-python/solve_with_bottlenecks.py instances/abz5.txt
 ```python
 # No Haskell, após identificar gargalos:
 refined_solution = refineBottlenecks(
-    tasks, 
-    initialStarts, 
-    criticalTasks, 
+    tasks,
+    initialStarts,
+    criticalTasks,
     criticalMachines
 )
 ```
@@ -263,6 +280,7 @@ optimize_critical_tasks(opt, starts, critical)
 ## 🎓 Conclusão
 
 A análise de gargalos:
+
 - ✅ Identifica onde focar otimização
 - ✅ Permite refinamento dirigido
 - ✅ Reduz espaço de busca do Z3

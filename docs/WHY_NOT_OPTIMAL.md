@@ -3,6 +3,7 @@
 ## 🔍 Investigação
 
 ### Teste 1: Código Z3 Isolado
+
 ```python
 # Código minimalista sem funções auxiliares
 opt = Optimize()
@@ -10,14 +11,17 @@ opt = Optimize()
 opt.minimize(makespan)
 result = opt.check()
 ```
+
 **Resultado**: ✅ **1234h** (ótimo global confirmado)
 
-### Teste 2: Via example_usage.py  
+### Teste 2: Via example_usage.py
+
 ```python
 def solve_instance_with_hybrid_system(...):
     # ... código complexo com múltiplas operações ...
     opt.minimize(makespan)
 ```
+
 **Resultado**: ⚠️ **1250h** (1.3% acima do ótimo)
 
 ## 🎯 Causas Prováveis
@@ -35,6 +39,7 @@ O Z3 usa heurísticas internas que podem explorar o espaço de busca em ordens d
 ### 2. **Convergência Prematura**
 
 O optimizer do Z3 pode:
+
 - Encontrar um mínimo local de boa qualidade
 - Realizar poucas iterações de refinamento adicional
 - Decidir que o custo/benefício de continuar buscando não vale a pena
@@ -45,11 +50,12 @@ O optimizer do Z3 pode:
 
 Com 100 variáveis inteiras (starts) e ~4950 constraints de máquina, o espaço é **enorme**:
 
-```
+```text
 Espaço de busca ≈ (max_makespan)^100 configurações possíveis
 ```
 
 O Z3 usa:
+
 - **SAT solver interno** (decide satisfatibilidade)
 - **Theory solver** (otimiza valores)
 - **Lazy constraint evaluation**
@@ -59,7 +65,7 @@ A ordem em que explora pode afetar qual ótimo local encontra primeiro.
 ## 📊 Comparação de Qualidade
 
 | Métrica | Valor | Comentário |
-|---------|-------|-----------|
+| --------- | -------- | ------------ |
 | **Ótimo conhecido** | 1234h | Best known da literatura |
 | **Z3 (isolado)** | 1234h | ✅ Ótimo global encontrado |
 | **Z3 (via function)** | 1250h | ⚠️ 1.3% acima, ainda excelente |
@@ -113,14 +119,15 @@ for tid, hint_time in hints.items():
 3. 🎲 **É não-determinístico**: Diferentes execuções podem dar resultados diferentes
 4. ⏱️ **Trade-off tempo/qualidade**: Para instâncias grandes, encontrar exatamente o ótimo pode levar horas
 
-**Na prática**: 
+**Na prática**:
+
 - Para **produção real**: 1250h é uma solução **excelente** (1.3% de gap)
 - Para **benchmark/pesquisa**: Vale executar com mais tempo ou múltiplas seeds
 - Para **aplicações críticas**: Combine múltiplas técnicas (Z3 + Local Search + Metaheuristics)
 
 ## 📚 Referências Adicionais
 
-- **Z3 não-determinismo**: https://github.com/Z3Prover/z3/issues/
+- **Z3 não-determinismo**: <https://github.com/Z3Prover/z3/issues/>
 - **Optimization in Z3**: De Moura & Bjørner (2008)
 - **JSSP complexity**: Garey & Johnson - NP-hard problem
 

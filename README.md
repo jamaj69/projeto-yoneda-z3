@@ -12,7 +12,7 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 ### 🎯 Resultados
 
 | Instância | Dimensão | Heurística MWR+SPT | Z3 Ótimo | Gap vs Best Known |
-|-----------|----------|---------------------|----------|-------------------|
+| --------- | -------- | ------------------ | -------- | ----------------- |
 | **abz5** | 10×10 (100 tarefas) | 1451h | 1250h | **1.3%** ✨ |
 | **la01** | 10×5 (50 tarefas) | 880h | 684h | **2.7%** ✨ |
 | **ft06** | 6×6 (36 tarefas) | 69h | 65h | 18% |
@@ -21,7 +21,7 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 
 ## 🏗️ Arquitetura
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  Python (script-python/main.py)                            │
 │  • Define problema JSSP                                    │
@@ -52,11 +52,13 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 ### Heurística MWR+SPT (Haskell)
 
 **Most Work Remaining (MWR)**:
+
 - Calcula trabalho total restante para cada job
 - Prioriza jobs com mais operações pendentes
 - Evita gargalos no final do escalonamento
 
 **Shortest Processing Time (SPT)**:
+
 - Desempate entre jobs com trabalho similar
 - Prioriza tarefas mais curtas
 - Maximiza utilização de recursos
@@ -73,7 +75,7 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 ### Quando Usar Cada Modo
 
 | Critério | Heurística Haskell | Z3 Completo | Híbrido |
-|----------|-------------------|-------------|---------|
+| -------- | ------------------ | ----------- | ------- |
 | **Velocidade** | ⚡ Milissegundos | ⏱️ Segundos/minutos | ⏱️ Segundos/minutos |
 | **Qualidade** | 📊 15-30% do ótimo | 🎯 Ótimo global | 🎯 Ótimo global |
 | **Tamanho** | 📦 Até 1000+ tarefas | 📏 Até ~200 tarefas | 📏 Até ~200 tarefas |
@@ -86,22 +88,27 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 **Novo recurso**: O Haskell identifica **pontos críticos** da solução heurística:
 
 #### 1. Caminho Crítico (Critical Path)
+
 - Detecta tarefas com **slack = 0** (não podem atrasar)
 - Apenas tarefas críticas afetam o makespan diretamente
 
 #### 2. Utilização de Máquinas
+
 - Calcula % de uso de cada máquina
 - Identifica **gargalos** (máquinas > 90% de uso)
 
 #### 3. Análise de Slack (Folga)
-```
+
+```text
 Slack = Latest Start Time - Earliest Start Time
 ```
+
 - `Slack = 0` → Tarefa crítica
 - `Slack > 0` → Tarefa tem folga para otimização
 
 **Exemplo de saída:**
-```
+
+```text
 ===== Haskell (MWR+SPT + Análise) =====
 Makespan:              1451h
 Caminho crítico:       1 tarefa (1%)
@@ -115,6 +122,7 @@ Tarefas críticas:      6 (na solução ótima)
 ```
 
 **Uso:**
+
 ```bash
 python script-python/solve_with_bottlenecks.py instances/AdamsBalasZawack1988/abz5.txt
 ```
@@ -165,7 +173,7 @@ python script-python/main.py
 
 ### Saída Esperada
 
-```
+```text
 --- Consultando Pré-Otimizador Haskell ---
 MAKESPAN HASKELL (Heurística + Setup): 23h
 MAKESPAN Z3 (Ótimo Global): 21h
@@ -178,7 +186,7 @@ Sucesso: O Z3 melhorou a heurística em 2h!
 O projeto inclui **242 instâncias clássicas** de JSSP de 8 benchmarks reconhecidos:
 
 | Benchmark | Instâncias | Descrição |
-|-----------|------------|----------|
+| --------- | ---------- | --------- |
 | **FisherThompson1963** | 3 | Instâncias clássicas 6×6, 10×10, 20×5 |
 | **Lawrence1984** | 40 | Problemas la01-la40 (10-30 jobs, 5-15 máquinas) |
 | **Taillard1993** | 80 | Instâncias difíceis ta01-ta80 (15-100 jobs) |
@@ -226,6 +234,7 @@ stack exec -- haskell-engine-exe --verbose
 ### `POST /validate`
 
 **Entrada**:
+
 ```json
 [
   {
@@ -241,6 +250,7 @@ stack exec -- haskell-engine-exe --verbose
 ```
 
 **Saída** (válido):
+
 ```json
 {
   "status": "ok",
@@ -251,6 +261,7 @@ stack exec -- haskell-engine-exe --verbose
 ```
 
 **Saída** (ciclo detectado):
+
 ```json
 {
   "status": "erro",
@@ -262,14 +273,14 @@ stack exec -- haskell-engine-exe --verbose
 ## 🔬 Tecnologias
 
 | Componente | Tecnologia | Propósito |
-|------------|-----------|-----------|
+| ---------- | ---------- | --------- |
 | Pré-otimizador | Haskell + Scotty + algebraic-graphs | Servidor REST com heurística gulosa |
 | Otimizador | Python + Z3 | SMT solver para otimização exata |
 | Visualização | Matplotlib | Gráficos de Gantt comparativos |
 
 ## 📦 Estrutura do Projeto
 
-```
+```text
 .
 ├── app-haskell/
 │   └── src/Main.hs          # Servidor web Haskell + heurística
@@ -327,7 +338,7 @@ stack exec -- haskell-engine-exe --verbose
 ## 👤 Autor
 
 **Jose Augusto M de Andrade Jr**  
-📧 jamaj@jamaj.com.br  
+📧 <jamaj@jamaj.com.br>  
 📅 2026
 
 ## 📄 Licença
