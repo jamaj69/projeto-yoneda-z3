@@ -1,0 +1,52 @@
+{
+  "cSpell.language": "en,pt,pt-BR",
+  "cSpell.enabled": true,
+  "cSpell.allowCompoundWords": true,
+  "cSpell.enableFiletypes": [
+    "markdown",
+    "haskell",
+    "python",
+    "json",
+    "yaml"
+  ],
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticMode": "workspace",
+  "haskell.serverEnvironment": {
+    "PATH": "${HOME}/.local/bin:${PATH}"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.stack-work": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.venv": true
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/.stack-work": true,
+    "**/dist": true,
+    "**/dist-newstyle": true,
+    "**/__pycache__": true,
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/venv": true
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
+  },
+  "[python]": {
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[haskell]": {
+    "editor.formatOnSave": false
+  }
+}

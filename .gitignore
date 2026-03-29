@@ -2,8 +2,11 @@
 *~
 *.swp
 *.swo
-.vscode/
 .idea/
+
+# VS Code (permitir settings.json)
+.vscode/*
+!.vscode/settings.json
 
 # Haskell Stack
 .stack-work/
