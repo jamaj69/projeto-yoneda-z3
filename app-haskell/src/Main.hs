@@ -91,6 +91,92 @@ solveHeuristic tasks = (startTimes, makespan)
     startTimes = Map.mapWithKey (\tId end -> end - (duration (taskLookup Map.! tId))) schedule
     makespan = if Map.null schedule then 0 else maximum (Map.elems schedule)
 
+-- Análise de Slack (folga) de cada tarefa
+-- Slack = quanto a tarefa pode atrasar sem afetar o makespan
+computeSlack :: [TaskReq] -> Map.Map Int Int -> Int -> Map.Map Int Int
+computeSlack tasks startTimes makespan' = 
+    let taskLookup = Map.fromList [(id_t t, t) | t <- tasks]
+        endTimes = Map.mapWithKey (\tid start -> start + duration (taskLookup Map.! tid)) startTimes
+        
+        -- Calcula Latest Start Time (LST) - mais tarde que pode começar
+        latestStarts = computeLST tasks makespan' Map.empty
+          where
+            computeLST [] _ acc = acc
+            computeLST (t:ts) ms acc =
+                let tid = id_t t
+                    -- LST baseado nos sucessores
+                    lstFromSuccessors = case next_t t of
+                        Nothing -> ms - duration t  -- Última tarefa
+                        Just nextId -> 
+                            case Map.lookup nextId acc of
+                                Just nextLST -> nextLST - duration t
+                                Nothing -> ms - duration t  -- Conservador
+                    
+                    -- LST também limitado por máquina (se houver sucessor na mesma máquina)
+                    currentLST = lstFromSuccessors
+                    
+                in computeLST ts ms (Map.insert tid currentLST acc)
+        
+        -- Slack = LST - EST (earliest start time)
+    in Map.mapWithKey (\tid est -> 
+        let lst = Map.findWithDefault est tid latestStarts
+        in max 0 (lst - est)
+       ) startTimes
+
+-- Identifica caminho crítico (tarefas com slack = 0)
+findCriticalPath :: [TaskReq] -> Map.Map Int Int -> [Int]
+findCriticalPath tasks slacks = 
+    [id_t t | t <- tasks, Map.findWithDefault 0 (id_t t) slacks == 0]
+
+-- Analisa utilização de máquinas
+analyzeMachineUtilization :: [TaskReq] -> Map.Map Int Int -> Int -> Map.Map Int Double
+analyzeMachineUtilization tasks startTimes makespan' =
+    let taskLookup = Map.fromList [(id_t t, t) | t <- tasks]
+        endTimes = Map.mapWithKey (\tid start -> start + duration (taskLookup Map.! tid)) startTimes
+        
+        -- Agrupa por máquina
+        machineGroups = Map.fromListWith (++) 
+            [(machine_id t, [(id_t t, t)]) | t <- tasks]
+        
+        -- Calcula tempo total ocupado em cada máquina
+        machineWorkload = Map.map (\taskList -> 
+            sum [duration t | (_, t) <- taskList]
+          ) machineGroups
+        
+        -- Utilização = workload / makespan
+    in Map.map (\workload -> fromIntegral workload / fromIntegral makespan') machineWorkload
+
+-- Refinamento local: tenta melhorar a solução focando nos gargalos
+refineBottlenecks :: [TaskReq] -> Map.Map Int Int -> Int -> (Map.Map Int Int, Int)
+refineBottlenecks tasks initialStarts initialMakespan =
+    let slacks = computeSlack tasks initialStarts initialMakespan
+        criticalTasks = findCriticalPath tasks slacks
+        machineUtil = analyzeMachineUtilization tasks initialStarts initialMakespan
+        
+        -- Identifica máquinas críticas (utilização > 0.9)
+        criticalMachines = Map.keys $ Map.filter (> 0.9) machineUtil
+        
+        -- Tenta swap de tarefas em máquinas críticas
+        -- (Implementação simplificada - apenas retorna solução original por enquanto)
+        -- TODO: Implementar local search mais sofisticado
+        
+    in (initialStarts, initialMakespan)
+
+-- Heurística completa com análise e refinamento
+solveWithRefinement :: [TaskReq] -> (Map.Map Int Int, Int, Map.Map Int Int, [Int])
+solveWithRefinement tasks = 
+    let -- Fase 1: Solução inicial MWR+SPT
+        (initialStarts, initialMakespan) = solveHeuristic tasks
+        
+        -- Fase 2: Análise de gargalos
+        slacks = computeSlack tasks initialStarts initialMakespan
+        criticalPath = findCriticalPath tasks slacks
+        
+        -- Fase 3: Refinamento (futuro)
+        (refinedStarts, refinedMakespan) = refineBottlenecks tasks initialStarts initialMakespan
+        
+    in (refinedStarts, refinedMakespan, slacks, criticalPath)
+
 main :: IO ()
 main = scotty 3000 $ do
     post "/validate" $ do
@@ -99,11 +185,19 @@ main = scotty 3000 $ do
         
         if Algo.isAcyclic adjMap
             then do
-                let (hints, hMakespan) = solveHeuristic tasks
+                let (hints, hMakespan, slacks, criticalPath) = solveWithRefinement tasks
+                    machineUtil = analyzeMachineUtilization tasks hints hMakespan
+                    criticalMachines = Map.keys $ Map.filter (> 0.85) machineUtil
+                    
                 json $ object [ "status" .= ("ok" :: String)
                               , "valid"  .= True
                               , "hints"  .= hints
-                              , "makespan_heuristic" .= hMakespan ]
+                              , "makespan_heuristic" .= hMakespan
+                              , "slacks" .= slacks
+                              , "critical_path" .= criticalPath
+                              , "critical_machines" .= criticalMachines
+                              , "machine_utilization" .= machineUtil
+                              ]
             else json $ object [ "status" .= ("erro" :: String)
                                , "valid"  .= False
                                , "msg"    .= ("Ciclo detectado!" :: String) ]

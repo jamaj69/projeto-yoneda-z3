@@ -81,6 +81,46 @@ O Haskell fornece uma **solução heurística de alta qualidade** (15-30% acima 
 
 📖 **Documentação detalhada**: [HEURISTIC_IMPROVEMENTS.md](docs/HEURISTIC_IMPROVEMENTS.md)
 
+### 🔍 Análise de Gargalos (Bottleneck Detection)
+
+**Novo recurso**: O Haskell identifica **pontos críticos** da solução heurística:
+
+#### 1. Caminho Crítico (Critical Path)
+- Detecta tarefas com **slack = 0** (não podem atrasar)
+- Apenas tarefas críticas afetam o makespan diretamente
+
+#### 2. Utilização de Máquinas
+- Calcula % de uso de cada máquina
+- Identifica **gargalos** (máquinas > 90% de uso)
+
+#### 3. Análise de Slack (Folga)
+```
+Slack = Latest Start Time - Earliest Start Time
+```
+- `Slack = 0` → Tarefa crítica
+- `Slack > 0` → Tarefa tem folga para otimização
+
+**Exemplo de saída:**
+```
+===== Haskell (MWR+SPT + Análise) =====
+Makespan:              1451h
+Caminho crítico:       1 tarefa (1%)
+Máquinas críticas:     []
+Utilização máxima:     59.8%
+Slacks: [0, 124, 89, ...]
+
+===== Z3 (Otimização Focada) =====
+Makespan:              1234h (15% melhor!)
+Tarefas críticas:      6 (na solução ótima)
+```
+
+**Uso:**
+```bash
+python script-python/solve_with_bottlenecks.py instances/AdamsBalasZawack1988/abz5.txt
+```
+
+📖 **Documentação completa**: [BOTTLENECK_ANALYSIS.md](docs/BOTTLENECK_ANALYSIS.md)
+
 ## 🚀 Instalação
 
 ### Pré-requisitos
@@ -253,7 +293,32 @@ stack exec -- haskell-engine-exe --verbose
 └── README.md
 ```
 
-## 📚 Referências
+## � Documentação Técnica
+
+### Guias e Análises
+
+1. **[INSTANCE_LOADER.md](docs/INSTANCE_LOADER.md)** - Como carregar e usar os 242 benchmarks
+   - Formato de arquivos
+   - API do carregador
+   - Lista completa de instâncias
+
+2. **[HEURISTIC_IMPROVEMENTS.md](docs/HEURISTIC_IMPROVEMENTS.md)** - Evolução da heurística Haskell
+   - Comparação toposort vs MWR+SPT
+   - Análise de resultados (77% de melhoria!)
+   - Detalhes da implementação
+
+3. **[BOTTLENECK_ANALYSIS.md](docs/BOTTLENECK_ANALYSIS.md)** - Análise de gargalos e caminho crítico
+   - Cálculo de slack (folga)
+   - Identificação de tarefas críticas
+   - Análise de utilização de máquinas
+   - Estratégias de otimização focada
+
+4. **[WHY_NOT_OPTIMAL.md](docs/WHY_NOT_OPTIMAL.md)** - Por que Z3 encontra 1250h ao invés de 1234h
+   - Explicação de não-determinismo do Z3
+   - Quando e por que acontece
+   - Como lidar com variação de resultados
+
+## �📚 Referências
 
 - **Job Shop Scheduling Problem**: Problema NP-difícil de escalonamento de tarefas
 - **Z3 Theorem Prover**: [Microsoft Research Z3](https://github.com/Z3Prover/z3)

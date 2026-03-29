@@ -1,5 +1,46 @@
+# Editor temporários
 *~
 *.swp
-tarballs/
-.stack-work/*.pyc
+*.swo
+.vscode/
+.idea/
+
+# Haskell Stack
+.stack-work/
+*.hi
+*.o
+*.prof
+*.aux
+*.hp
+*.eventlog
+.HTF/
+dist/
+dist-newstyle/
+cabal.project.local
+cabal.project.local~
+.ghc.environment.*
+.ghci.local
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.egg
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.env
+*.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Outros
+tarballs/
+*.tar.gz
+*.zip
