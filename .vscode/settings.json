@@ -12,6 +12,13 @@
   "python.languageServer": "Pylance",
   "python.analysis.typeCheckingMode": "basic",
   "python.analysis.diagnosticMode": "workspace",
+  "python.defaultInterpreterPath": "/home/python/pyenv/bin/python3",
+  "python.analysis.extraPaths": [],
+  "python.analysis.stubPath": "",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none",
+    "reportMissingTypeStubs": "none"
+  },
   "haskell.serverEnvironment": {
     "PATH": "${HOME}/.local/bin:${PATH}"
   },
