@@ -10,9 +10,9 @@
 
 ### Depois (Heurística MWR+SPT)
 
-- **abz5**: 1451h (apenas 17% acima do ótimo 1234h)
-- **ft06**: 69h (26% acima do ótimo 55h)
-- **la01**: 880h (32% acima do ótimo 666h)
+- **abz5**: 1451h (apenas 17% acima da solução ótima 1234h)
+- **ft06**: 69h (26% acima da solução ótima 55h)
+- **la01**: 880h (32% acima da solução ótima 666h)
 - Estratégia: Most Work Remaining + Shortest Processing Time
 
 ## 🔧 Melhorias Implementadas
@@ -102,7 +102,7 @@ opt.add_soft(starts[tid] == hints[str(tid)], weight=1)
 
 **Vantagens:**
 
-- Encontra ótimo ou prova inviabilidade
+- Encontra ótimo, ou prova inviabilidade
 - Gap típico: 1-5% do best known
 - Formalmente verificável
 
@@ -198,4 +198,4 @@ O sistema híbrido agora oferece:
 - ✅ **Soluções próximas do ótimo** (1-3% gap)
 - ✅ **Flexibilidade** para usar modo rápido ou ótimo
 
-A arquitetura permite experimentação e comparação de técnicas, sendo útil tanto para produção quanto para pesquisa em JSSP.
+A arquitetura permite experimentação e comparação de técnicas, sendo útil para produção e pesquisa em JSSP.
