@@ -1,0 +1,65 @@
+name:                haskhelljssp
+version:             0.1.0.0
+github:              jamaj69/haskelljssp
+license:             BSD-3-Clause
+author:              Jose Augusto M de Andrade Jr
+maintainer:          jamaj@jamaj.com.br
+copyright:           2026 jamaj
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on Github at <https://github.com/githubuser/haskell-engine#readme>
+
+dependencies:
+- base >= 4.11 && < 10
+- rio >= 0.1.12.0
+- scotty
+- aeson
+- algebraic-graphs
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  haskell-engine-exe:
+    main:                Main.hs
+    source-dirs:         app-haskell/src
+    dependencies:
+    - base >= 4.11 && < 10
+    - scotty
+    - aeson
+    - algebraic-graphs
+    - containers    # <--- Adicione esta linha aqui
+
+tests:
+  haskell-engine-test:
+    main:                Spec.hs
+    source-dirs:         test
+    dependencies:
+    - haskell-engine
+    - hspec
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N

@@ -1,0 +1,84 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.34.7.
+--
+-- see: https://github.com/sol/hpack
+
+name:           haskhelljssp
+version:        0.1.0.0
+description:    Please see the README on Github at <https://github.com/githubuser/haskell-engine#readme>
+homepage:       https://github.com/jamaj69/haskelljssp#readme
+bug-reports:    https://github.com/jamaj69/haskelljssp/issues
+author:         Jose Augusto M de Andrade Jr
+maintainer:     jamaj@jamaj.com.br
+copyright:      2026 jamaj
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/jamaj69/haskelljssp
+
+library
+  exposed-modules:
+      Import
+      Run
+      Types
+      Util
+  other-modules:
+      Paths_haskhelljssp
+  autogen-modules:
+      Paths_haskhelljssp
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , algebraic-graphs
+    , base >=4.11 && <10
+    , rio >=0.1.12.0
+    , scotty
+  default-language: Haskell2010
+
+executable haskell-engine-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_haskhelljssp
+  autogen-modules:
+      Paths_haskhelljssp
+  hs-source-dirs:
+      app-haskell/src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , algebraic-graphs
+    , base >=4.11 && <10
+    , containers
+    , rio >=0.1.12.0
+    , scotty
+  default-language: Haskell2010
+
+test-suite haskell-engine-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      UtilSpec
+      Paths_haskhelljssp
+  autogen-modules:
+      Paths_haskhelljssp
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , algebraic-graphs
+    , base >=4.11 && <10
+    , haskell-engine
+    , hspec
+    , rio >=0.1.12.0
+    , scotty
+  default-language: Haskell2010
