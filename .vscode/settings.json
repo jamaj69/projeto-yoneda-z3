@@ -139,6 +139,8 @@
       "BARBARISMS"
     ]
   },
+  "terminal.integrated.environmentChangesRelaunch": false,
+  "terminal.integrated.environmentChangesIndicator": "off",
   "[markdown]": {
     "editor.wordWrap": "on",
     "editor.quickSuggestions": {
