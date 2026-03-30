@@ -56,7 +56,7 @@ and this project adheres to the
 Results on benchmark instances (Haskell heuristic, no external solver):
 
 | Instance | Dim | MWR+SPT | SBP | Refined | BKS | Gap | Time |
-|----------|-----|---------|-----|---------|-----|-----|------|
+| -------- | --- | ------- | --- | ------- | --- | --- | ---- |
 | ft06 | 6×6 | 69 | 60 | 60 | 55 | +9.1% | <0.1s |
 | la01 | 10×5 | 880 | 666 | **666** | 666 | **0.0%** | <0.1s |
 | abz5 | 10×10 | 1451 | 1334 | 1312 | 1234 | +6.3% | 0.2s |

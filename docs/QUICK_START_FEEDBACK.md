@@ -22,7 +22,7 @@ python script-python/learn_from_z3.py instances/FisherThompson1963/ft06.txt
 
 **Resultado esperado** (~5 segundos):
 
-```
+```text
 🔬 SISTEMA DE APRENDIZADO POR FEEDBACK
 ======================================================================
 Instância: instances/FisherThompson1963/ft06.txt
@@ -82,7 +82,7 @@ python script-python/learn_from_z3.py instances/Lawrence1984/la01.txt
 
 **Resultado esperado** (~8 segundos):
 
-```
+```text
 🎯 Desempenho:
    Heurística: 880h
    Ótimo (Z3): 684h
@@ -104,7 +104,7 @@ python script-python/learn_from_z3.py instances/AdamsBalasZawack1988/abz5.txt
 
 **Resultado esperado** (~15 segundos):
 
-```
+```text
 🎯 Desempenho:
    Heurística: 1451h
    Ótimo (Z3): 1234h
@@ -242,16 +242,19 @@ Agora você deverá ver o relatório completo gerado pelo Haskell! 🎉
 ### Como o Haskell melhora?
 
 **Fase 1 (v0.4.0)**: Análise e relatório
+
 - Mostra diferenças
 - Sugere ajustes
 - **Manual**: Desenvolvedor ajusta código
 
 **Fase 2 (v0.5.0)**: Aprendizado automático
+
 - Salva histórico em `learning_history.json`
 - Aplica pesos ajustados na próxima execução
 - Evolui progressivamente com cada instância
 
 **Fase 3 (v0.6.0)**: Meta-aprendizado
+
 - Clusteriza tipos de instância
 - Aplica heurística diferente por cluster
 - Aprende quando usar cada estratégia

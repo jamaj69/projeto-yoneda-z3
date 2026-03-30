@@ -308,7 +308,20 @@
     "ylabel",
     "yticks",
     "yticklabels",
-    "otimizacao"
+    "otimizacao",
+    "elems",
+    "ortools",
+    "fmap",
+    "foldl",
+    "Laarhoven",
+    "Trubian",
+    "Lmax",
+    "Zhang",
+    "Bengio",
+    "Khalil",
+    "pyenv",
+    "Clusteriza",
+    "Amico"
   ],
   "flagWords": [],
   "ignoreRegExpList": [

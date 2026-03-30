@@ -24,7 +24,7 @@
 ### Resultados Atuais (Haskell heurística pura)
 
 | Instance | Dim | MWR | SBP | Refined | BKS | Gap | Time |
-|----------|-----|-----|-----|---------|-----|-----|------|
+| -------- | --- | --- | --- | ------- | --- | --- | ---- |
 | ft06 | 6×6 | 69 | 60 | 60 | 55 | +9.1% | <0.1s |
 | la01 | 10×5 | 880 | 666 | **666** | 666 | **OPT** | <0.1s |
 | abz5 | 10×10 | 1451 | 1334 | 1312 | 1234 | +6.3% | 0.2s |
@@ -47,6 +47,7 @@
 **Problem**: `buildSolutionGraph` does a full `algebraic-graphs` rebuild (O(V log V)) on every `evalCandidate` call. For ta71 (2000 tasks), this is the dominant cost.
 
 **Solution**: Replace with `IntMap IntSet` adjacency list:
+
 - O(1) amortized edge add/remove
 - Incremental swap: modify only 2-4 edges instead of rebuilding entire graph
 - Forward pass reuses unchanged portions
@@ -62,6 +63,7 @@ incrementalForwardPass :: AdjList -> Map Int Int -> Int -> Int -> Map Int Int
 ```
 
 **Expected impact**:
+
 - `evalCandidate` from O(V log V) → O(affected nodes)
 - ta71: 24s → ~5s estimated
 - Enables more iterations in N2/N5/N7 within same time budget
@@ -85,6 +87,7 @@ tabuSearch :: Int -> Int -> [TaskReq] -> Map Int TaskReq -> SearchState -> Searc
 ```
 
 **Key design decisions**:
+
 - Tabu tenure: `sqrt(n)` where n = number of tasks
 - Accept non-improving moves when all neighbors are tabu
 - Aspiration: accept tabu move if it improves global best

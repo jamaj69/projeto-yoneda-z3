@@ -3,10 +3,12 @@
 ## 🎯 Objetivo
 
 Permitir que o **servidor Haskell aprenda** com as diferenças entre:
+
 - **Sua solução heurística** (MWR+SPT)
 - **Solução ótima do Z3**
 
 Para melhorar progressivamente:
+
 1. **Detecção de gargalos**: Quais máquinas realmente limitam o makespan
 2. **Ordenação de tarefas**: Qual a melhor permutação em cada máquina
 3. **Pesos da heurística**: Ajustar MWR vs SPT dinamicamente
@@ -17,7 +19,7 @@ Para melhorar progressivamente:
 
 ### Fluxo Atual (v0.3.0)
 
-```
+```text
 ┌──────────┐  POST /validate   ┌──────────┐
 │  Python  │ ──────────────→   │ Haskell  │
 │          │                   │          │
@@ -33,7 +35,7 @@ Para melhorar progressivamente:
 
 ### Fluxo Proposto (v0.4.0+)
 
-```
+```text
 ┌──────────┐  POST /validate   ┌──────────┐
 │  Python  │ ──────────────→   │ Haskell  │
 │          │                   │          │
@@ -562,6 +564,7 @@ if __name__ == "__main__":
 ## 🔄 Aprendizado Persistente (v0.5.0+)
 
 ### Problema
+
 Após o programa encerrar, o aprendizado é perdido.
 
 ### Solução: Persistência em Arquivo JSON
@@ -704,14 +707,17 @@ main = do
 ## 📊 Métricas de Sucesso
 
 ### Curto Prazo (após 10 instâncias)
+
 - ✅ Gap médio reduz de 15% → 12%
 - ✅ Acurácia de gargalos melhora de 70% → 85%
 
 ### Médio Prazo (após 50 instâncias)
+
 - ✅ Gap médio reduz para 8%
 - ✅ Heurística encontra ótimo em 20% dos casos
 
 ### Longo Prazo (após 200+ instâncias)
+
 - ✅ Gap médio < 5%
 - ✅ Heurística competitiva com solvers comerciais em instâncias pequenas
 
@@ -720,6 +726,7 @@ main = do
 ## 🚀 Roadmap de Implementação
 
 ### Fase 1: Protótipo Básico (v0.4.0)
+
 - [ ] Adicionar tipos em `Types.hs`
 - [ ] Implementar funções de comparação em `Main.hs`
 - [ ] Criar endpoint `/learn`
@@ -727,16 +734,19 @@ main = do
 - [ ] Testar em ft06, la01, abz5
 
 ### Fase 2: Refinamento (v0.4.1)
+
 - [ ] Melhorar algoritmos de inferência de prioridades
 - [ ] Adicionar mais tipos de ajustes heurísticos
 - [ ] Visualização de comparações (Gantt lado a lado)
 
 ### Fase 3: Persistência (v0.5.0)
+
 - [ ] Salvar/carregar histórico
 - [ ] Aplicar pesos aprendidos na heurística
 - [ ] Dashboard de evolução do aprendizado
 
 ### Fase 4: Aprendizado Avançado (v0.6.0)
+
 - [ ] Clustering de padrões de instâncias
 - [ ] Diferentes pesos para diferentes tipos de problema
 - [ ] Meta-aprendizado (quando aplicar cada heurística)

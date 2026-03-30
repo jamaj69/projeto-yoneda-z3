@@ -21,6 +21,7 @@ O Haskell fornece soluções heurísticas de alta qualidade (0-21% do ótimo) em
 | **ta71** | 100×20 | 8010 | 5930 | **5886** | 5464 | +7.7% |
 
 💡 **Destaques**:
+
 - **la01 ótimo** encontrado pela heurística pura (sem solver!)
 - Pipeline de 3 fases proporciona reduções compostas: MWR→SBP→N2/N5/N7
 - Instâncias de 2000 tarefas (100×20) resolvidas em ~24s
@@ -58,6 +59,7 @@ O Haskell fornece soluções heurísticas de alta qualidade (0-21% do ótimo) em
 ### Phase 1a: MWR+SPT (Haskell)
 
 **Most Work Remaining (MWR)** + **Shortest Processing Time (SPT)** list scheduling:
+
 - Calcula trabalho total restante para cada job
 - Prioriza jobs com mais operações pendentes (MWR)
 - Desempate por duração da tarefa (SPT)
@@ -66,6 +68,7 @@ O Haskell fornece soluções heurísticas de alta qualidade (0-21% do ótimo) em
 ### Phase 1b: Shifting Bottleneck Procedure (SBP)
 
 Implementação de Adams, Balas & Zawack (1988):
+
 - **Schrage heuristic** para subproblemas `1|r_j|max(C_j+q_j)`, O(n log n)
 - **Carlier B&B** com budget de nós (budget=0 na prática — Schrage já é ótimo por subproblema)
 - Decomposição iterativa: pick bottleneck machine → fix ordering → re-optimize scheduled machines
@@ -83,7 +86,7 @@ newtype Yoneda f a = Yoneda { runYoneda :: forall b. (a -> b) -> f b }
 **Três vizinhanças** aplicadas em sequência (N2 → N5 → N7):
 
 | Neighborhood | Técnica | Referência |
-|-------------|---------|-----------|
+| ------------ | ------- | ---------- |
 | **N2** | Swap de tarefas adjacentes no caminho crítico | Nowicki & Smutnicki 1996 |
 | **N5** | Rotação de endpoints de blocos críticos | van Laarhoven et al. 1992 |
 | **N7** | Reinserção de tarefas críticas em todas as posições | Dell'Amico & Trubian 1993 |
@@ -102,7 +105,7 @@ newtype Yoneda f a = Yoneda { runYoneda :: forall b. (a -> b) -> f b }
 ### Solvers Exatos (Python)
 
 | Solver | Script | Uso |
-|--------|--------|-----|
+| ------ | ------ | --- |
 | **Z3** (SMT) | `example_usage.py` | Ótimo para instâncias ≤200 tarefas |
 | **OR-Tools CP-SAT** | `solve_ortools.py` | Melhor para instâncias maiores, portfolio solver |
 
