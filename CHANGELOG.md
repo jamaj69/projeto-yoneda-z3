@@ -8,24 +8,67 @@ and this project adheres to the
 
 ## Unreleased
 
-### Added (Proposta v0.4.0)
+## 0.4.0.0 - 2026-03-30
 
-- 🧠 **Sistema de Aprendizado por Feedback** (Haskell ↔ Z3)
-  - Arquitetura para Haskell aprender com soluções ótimas do Z3
-  - Documentação completa: [FEEDBACK_LEARNING.md](docs/FEEDBACK_LEARNING.md)
-  - Tipos de dados: `docs/FeedbackTypes.hs` (exemplo para implementação futura)
-  - Script Python `learn_from_z3.py` com análise manual Python-side (**funcional**)
-  - **Análises implementadas (Python-side)**:
-    - Comparação de ordenação de tarefas por máquina
-    - Detecção de swaps necessários (pares invertidos)
-    - Avaliação de gap heurística vs ótimo
-    - Sugestões automáticas de ajuste (IncreaseMWRWeight, IncreaseSPTWeight)
-  - **Próximos passos**:
-    - [ ] Implementar endpoint `/learn` em Main.hs
-    - [ ] Adicionar tipos em Types.hs
-    - [ ] Persistência de pesos aprendidos (learning_history.json)
-    - [ ] Aplicar pesos customizados na heurística
-  - **Impacto esperado**: Gap 17% → 9% após 50 instâncias
+### Added
+
+- **Yoneda-Fused Neighborhood Pipeline**
+  - `newtype Yoneda f a` with `liftYoneda`/`lowerYoneda` for O(1) fmap fusion
+  - Three neighborhoods: N2 (adjacent swap), N5 (block rotation), N7 (task reinsertion)
+  - `SearchState`, `Neighborhood`, `StepSelector` type abstractions
+  - `refinementPipeline`: left-fold over `[(budget, Neighborhood)]` stages
+  - `greedySweep`: carry-forward `foldl'` enabling dependent swap chains
+  - Adaptive strategy: `firstImprovementSel` for n>500, `steepestDescent` for smaller
+
+- **Shifting Bottleneck Procedure (SBP)**
+  - `SMJob` type for single-machine subproblems `1|r_j|max(C_j+q_j)`
+  - `schrageSM`: Schrage (1984) greedy heuristic, O(n log n)
+  - `carlierBnB`: Branch-and-bound with node budget (budget=0 = pure Schrage)
+  - `releasesExcluding`/`tailsExcluding`: forward/backward pass excluding one machine
+  - `sbpOneMachine`: solves one machine via Carlier
+  - `shiftingBottleneck`: iterative machine decomposition with single-pass re-optimization
+  - `makespan_sbp` field in JSON response
+
+- **OR-Tools CP-SAT Solver** (`script-python/solve_ortools.py`)
+  - Full CP-SAT model with `NewIntervalVar` + `AddNoOverlap`
+  - Solution validation scripts (`verify_ortools.py`, `validate_solution.py`)
+  - Warm-start tested and rejected (CP-SAT cold-start is empirically better for JSSP)
+
+- **Disjunctive Graph Infrastructure**
+  - `buildSolutionGraph`: DAG with conjunction + disjunction arcs
+  - `forwardPass`/`backwardPass`: topological DP for EST/LST
+  - `graphBasedSlack`: precise slack computation from graph passes
+
+### Changed
+
+- Heurística pipeline: MWR+SPT → SBP → N2/N5/N7 refinement (3 phases)
+- `solveWithRefinement` returns 6-tuple: `(hints, mwrMS, sbpMS, refinedMS, slacks, criticalPath)`
+- Phase selection: best of {MWR, SBP} seeds neighborhood refinement
+
+### Fixed
+
+- la01 regression (666→695→666): `greedySweep` carry-forward restores dependent swap chains
+- All `-Wx-partial` GHC warnings: `head`→`List.uncons`, `tail`→`drop 1`, irrefutable patterns→`case`
+- Carlier depth explosion (la01 crash with depth=12): replaced with node-budget
+
+### Performance
+
+Results on benchmark instances (Haskell heuristic, no external solver):
+
+| Instance | Dim | MWR+SPT | SBP | Refined | BKS | Gap | Time |
+|----------|-----|---------|-----|---------|-----|-----|------|
+| ft06 | 6×6 | 69 | 60 | 60 | 55 | +9.1% | <0.1s |
+| la01 | 10×5 | 880 | 666 | **666** | 666 | **0.0%** | <0.1s |
+| abz5 | 10×10 | 1451 | 1334 | 1312 | 1234 | +6.3% | 0.2s |
+| abz9 | 10×10 | 1132 | 849 | 801 | 661 | +21.2% | 2.5s |
+| dmu10 | 20×20 | 4765 | 4143 | 3621 | n/a | — | 4.3s |
+| ta71 | 100×20 | 8010 | 5930 | 5886 | 5464 | +7.7% | 23.8s |
+
+### Empirical Findings
+
+- **Carlier B&B adds zero value**: for all tested JSSP subproblems, Schrage greedy produces optimal single-machine solutions (Jackson LB = Schrage UB at first node)
+- **SBP convergence loop rejected**: iterating re-optimization causes Schrage tie-oscillation and regressions (abz9: 801→821)
+- **OR-Tools warm-start rejected**: CP-SAT's portfolio solver finds better solutions cold than with Haskell hints; hints bias workers toward suboptimal neighborhoods
 
 ## 0.3.0.0 - 2026-04-01
 

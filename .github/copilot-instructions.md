@@ -3,48 +3,57 @@
 ## 🎯 Visão Geral do Projeto
 
 Sistema híbrido de otimização para **Job Shop Scheduling Problem (JSSP)** que combina:
-- **Haskell (servidor REST)**: Heurística MWR+SPT + análise de gargalos
-- **Python + Z3**: Otimizador SMT para soluções ótimas globais
+- **Haskell (servidor REST)**: Pipeline de 3 fases — MWR+SPT → SBP → Yoneda-fused N2/N5/N7
+- **Python + Z3/OR-Tools**: Solvers exatos para soluções ótimas globais
 
 ### Arquitetura
 
 ```
-Python → POST /validate → Haskell (heurística + análise) → Z3 (otimização)
+Python → POST /validate → Haskell (Phase 1a: MWR → 1b: SBP → 2: N2/N5/N7 → 3: analysis)
 ```
 
-## 📊 Estado Atual (v0.3.0)
+## 📊 Estado Atual (v0.4.0)
 
 ### Funcionalidades Implementadas
 
 1. **Servidor Haskell** (`app-haskell/src/Main.hs`)
    - Porta 3000, endpoint `/validate`
-   - Heurística **MWR+SPT** (Most Work Remaining + Shortest Processing Time)
-   - Análise de gargalos: slack, caminho crítico, utilização de máquinas
-   - Retorna: `hints`, `makespan_heuristic`, `slacks`, `critical_path`, `critical_machines`, `machine_utilization`
+   - **Phase 1a**: MWR+SPT list scheduling
+   - **Phase 1b**: Shifting Bottleneck (Schrage + Carlier B&B)
+   - **Phase 2**: Yoneda-fused neighborhoods N2/N5/N7 with `greedySweep` and `refinementPipeline`
+   - **Phase 3**: Bottleneck analysis (slack, critical path, utilization)
+   - Retorna: `hints`, `makespan_heuristic`, `makespan_sbp`, `makespan_refined`, `refined_starts`, `slacks`, `critical_path`, `critical_machines`, `machine_utilization`
 
 2. **Cliente Python** (`script-python/`)
    - `main.py`: Exemplo básico 4×3
    - `example_usage.py`: Integração Haskell+Z3 com benchmarks
+   - `solve_ortools.py`: OR-Tools CP-SAT solver
    - `instance_loader.py`: Carrega 242 instâncias clássicas
    - `solve_with_bottlenecks.py`: Análise de gargalos
+   - `validate_solution.py`, `verify_ortools.py`: Validação de soluções
+   - `learn_from_z3.py`: Análise comparativa heurística vs Z3
    - `debug_z3.py`: Debug de comportamento Z3
 
 3. **Benchmarks** (`instances/`)
    - 242 instâncias de 8 datasets clássicos
    - FisherThompson1963, Lawrence1984, Taillard1993, AdamsBalasZawack1988, etc.
 
-### Resultados de Performance
+### Resultados de Performance (Haskell heurística pura)
 
-| Instância | Dimensão | Heurística | Z3 | Gap vs Best Known |
-|-----------|----------|------------|----|--------------------|
-| **abz5** | 10×10 | 1451h | 1234h | **1.3%** ✨ |
-| **la01** | 10×5 | 880h | 684h | 2.7% |
-| **ft06** | 6×6 | 69h | 65h | 18% |
+| Instância | Dim | MWR | SBP | Refined | BKS | Gap | Time |
+|-----------|-----|-----|-----|---------|-----|-----|------|
+| ft06 | 6×6 | 69 | 60 | 60 | 55 | +9.1% | <0.1s |
+| la01 | 10×5 | 880 | 666 | **666** | 666 | **OPT** | <0.1s |
+| abz5 | 10×10 | 1451 | 1334 | 1312 | 1234 | +6.3% | 0.2s |
+| abz9 | 10×10 | 1132 | 849 | 801 | 661 | +21.2% | 2.5s |
+| dmu10 | 20×20 | 4765 | 4143 | 3621 | n/a | — | 4.3s |
+| ta71 | 100×20 | 8010 | 5930 | 5886 | 5464 | +7.7% | 24s |
 
-**Melhorias históricas:**
-- v0.1.0 (toposort): 6446h em abz5
-- v0.2.0 (MWR+SPT): 1451h em abz5 (**77% melhor!**)
-- v0.3.0 (+ bottlenecks): Mesma qualidade, mas com análise detalhada
+**Evolução histórica:**
+- v0.1.0 (toposort): 6446 em abz5
+- v0.2.0 (MWR+SPT): 1451 em abz5 (77% melhor)
+- v0.3.0 (+ bottlenecks): Mesma qualidade, com análise detalhada
+- v0.4.0 (SBP + N2/N5/N7): 1312 em abz5, la01 OPT, ta71 em 24s
 
 ## 🔧 Como Desenvolver
 
@@ -86,165 +95,95 @@ stack test
   - Máquina processa UMA tarefa por vez
 - **Objetivo**: Minimizar makespan (tempo total)
 
-### Heurística MWR+SPT
+### Heurística MWR+SPT (Phase 1a)
 
-**Most Work Remaining (MWR)**:
-- Calcula trabalho total restante para cada job
-- Prioriza jobs com mais operações pendentes
-- Evita gargalos no final
-
-**Shortest Processing Time (SPT)**:
-- Desempate entre jobs similares
-- Prioriza tarefas mais curtas
-- Maximiza utilização
-
-**Implementação**:
+**Most Work Remaining (MWR)** + **Shortest Processing Time (SPT)** list scheduling:
 ```haskell
 priority task = (negate remaining_work, duration task, task_id)
 sortBy (comparing priority) tasks
 ```
 
-### Análise de Gargalos (v0.3.0)
+### Shifting Bottleneck Procedure (Phase 1b)
 
-**Slack (Folga)**:
-```
-Slack(tarefa) = Latest Start Time - Earliest Start Time
-```
-- `Slack = 0` → Tarefa **crítica** (caminho crítico)
-- `Slack > 0` → Tem folga para otimização
+- **Schrage heuristic** para subproblemas `1|r_j|max(C_j+q_j)`
+- **Carlier B&B** com node budget (budget=0 = pure Schrage, empiricamente suficiente)
+- Decomposição iterativa: bottleneck machine → fix ordering → re-optimize
 
-**Caminho Crítico**:
-- Sequência de tarefas com slack=0
-- Determina o makespan
-- Otimizar essas tarefas tem impacto direto
+### Yoneda-Fused Neighborhoods (Phase 2)
 
-**Utilização de Máquinas**:
-```
-Utilização = Tempo_Trabalhado / Makespan
-```
-- `> 90%` → Gargalo
-- `< 50%` → Ociosa
-
-### Integração Z3
-
-**Constraints principais**:
-```python
-# Precedência
-opt.add(starts[next_task] >= starts[task] + duration + setup_time)
-
-# Máquinas (não-overlap)
-opt.add(Or(
-    starts[t1] + duration[t1] <= starts[t2],
-    starts[t2] + duration[t2] <= starts[t1]
-))
-
-# Objetivo
-opt.minimize(makespan)
+```haskell
+newtype Yoneda f a = Yoneda { runYoneda :: forall b. (a -> b) -> f b }
+-- O(1) fmap, composição na continuação, lowerYoneda aplica tudo em 1 passagem
 ```
 
-**Hints do Haskell**:
-- Usados apenas como REFERÊNCIA (não constraints!)
-- Z3 busca livremente
-- Importante: NÃO adicionar soft constraints (limitariam busca)
+- **N2**: Adjacent swap on critical path (Nowicki & Smutnicki 1996)
+- **N5**: Block rotation (van Laarhoven et al. 1992)
+- **N7**: Task reinsertion at all positions (Dell'Amico & Trubian 1993)
+- **greedySweep**: carry-forward `foldl'` que permite cadeias de swaps dependentes
+- **refinementPipeline**: left-fold `[(budget, Neighborhood)]`
+
+### Análise de Gargalos (Phase 3)
+
+- Forward/backward pass no grafo disjuntivo para EST/LST
+- `Slack = LST - EST` (zero = caminho crítico)
+- `Utilização = Tempo_Trabalhado / Makespan`
+
+### Solvers Exatos (Python)
+
+- **Z3**: Hints usados apenas como REFERÊNCIA (não constraints!)
+- **OR-Tools CP-SAT**: `NewIntervalVar` + `AddNoOverlap` (cold-start, sem warm-start)
 
 ## 📁 Estrutura de Arquivos
 
 ```
 .
 ├── app-haskell/
-│   └── src/Main.hs              # Servidor + heurística + análise
+│   └── src/Main.hs              # Servidor + pipeline completo
 ├── src/
 │   ├── Types.hs                 # TaskReq, TaskRes, ValidationResponse
 │   ├── Run.hs                   # Lógica de execução
 │   └── Util.hs                  # Utilitários
 ├── script-python/
 │   ├── main.py                  # Exemplo básico
-│   ├── example_usage.py         # Cliente completo
+│   ├── example_usage.py         # Integração Haskell+Z3
+│   ├── solve_ortools.py         # OR-Tools CP-SAT solver
 │   ├── instance_loader.py       # Parser de benchmarks
 │   ├── solve_with_bottlenecks.py # Análise de gargalos
+│   ├── validate_solution.py     # Validação de soluções
+│   ├── verify_ortools.py        # Verificação OR-Tools
+│   ├── learn_from_z3.py         # Análise comparativa
 │   └── debug_z3.py              # Debug Z3
 ├── instances/                   # 242 benchmarks
 ├── docs/
 │   ├── BOTTLENECK_ANALYSIS.md   # Análise de gargalos
 │   ├── HEURISTIC_IMPROVEMENTS.md # Evolução da heurística
+│   ├── FEEDBACK_LEARNING.md     # Sistema de aprendizado
 │   ├── INSTANCE_LOADER.md       # Guia de benchmarks
 │   └── WHY_NOT_OPTIMAL.md       # Z3 non-determinism
-├── ROADMAP.md                   # Planejamento v0.4-v0.5
+├── ROADMAP.md                   # Planejamento v0.5+
 ├── CHANGELOG.md                 # Histórico de versões
 └── README.md                    # Documentação principal
 ```
 
-## 🎯 Próximos Passos (v0.4.0)
+## 🎯 Próximos Passos (v0.5.0)
 
-### 1. Refinamento Local (ALTA PRIORIDADE)
+### 1. IntMap Adjacency (ALTA PRIORIDADE)
+Replace `algebraic-graphs` with `IntMap IntSet` for incremental graph updates in `evalCandidate`.
+Expected: ta71 from 24s → ~5s.
 
-**Objetivo**: Melhorar heurística antes do Z3
+### 2. Tabu Search over N2/N5 (ALTA PRIORIDADE)
+Short-term memory to escape local minima. Expected: abz5 1312→~1260.
 
-**Implementar em `Main.hs`**:
-```haskell
-refineBottlenecks :: [TaskReq] -> Starts -> [TaskId] -> [Machine] -> Starts
-refineBottlenecks tasks starts criticalTasks criticalMachines =
-    -- TODO: Implementar
-    -- 1. Swap de tarefas em máquinas críticas (>90% uso)
-    -- 2. Shift de tarefas críticas dentro do slack
-    -- 3. Load balancing iterativo
-    starts  -- Por enquanto retorna original
-```
+### 3. SBP Graph Caching (MÉDIA PRIORIDADE)
+Thread graph through SBP iterations to avoid redundant rebuilds.
 
-**Meta**: 1451h → ~1350h em abz5 (8% melhor)
+### 4. Better Schrage Tie-Breaking (MÉDIA PRIORIDADE)
+Composite tie-breaker to prevent SBP convergence oscillation.
 
-### 2. Z3 Focado (MÉDIA PRIORIDADE)
-
-**Estratégia**: Fixar tarefas não-críticas, otimizar apenas caminho crítico
-
-```python
-# Fixar 95% das tarefas
-for task in non_critical_tasks:
-    opt.add(starts[task.id] == hints[task.id])
-
-# Otimizar 5% críticas
-# (deixar livre)
-```
-
-**Meta**: 10s → ~3s (70% mais rápido)
-
-### 3. Visualizações (BAIXA PRIORIDADE)
-
-- Gantt colorido por slack (vermelho=crítico, verde=folga)
-- Gráfico de utilização de máquinas
-
-## 🐛 Problemas Conhecidos
-
-### 1. Slack Calculation
-
-**Observado**: Apenas 1 tarefa crítica em abz5 (parece baixo)
-
-**Possível causa**: Erro no cálculo de Latest Start Time (LST)
-
-**Como investigar**:
-```haskell
--- Verificar algoritmo de backward pass
-computeSlack tasks starts makespan
--- LST deve ser calculado partindo do makespan e seguindo backward
-```
-
-### 2. Z3 Non-Determinism
-
-**Comportamento**: Às vezes 1234h, às vezes 1250h (~1% variação)
-
-**Causa**: Heurísticas internas do Z3 não são determinísticas
-
-**Solução**: Aceitável para prática. Para forçar determinismo:
-```python
-opt.set("random_seed", 42)
-opt.set("smt.random_seed", 42)
-```
-
-### 3. Setup Time
-
-**Estado atual**: Fixo em 0 para todos os jobs
-
-**Melhoria futura**: Matriz de setup times por (job_i, job_j, machine)
+### Empirical Findings (tested and rejected)
+- ❌ Carlier B&B budget > 0: Schrage already optimal per subproblem
+- ❌ SBP convergence loop: oscillation due to Schrage tie-breaking
+- ❌ OR-Tools warm-start: CP-SAT cold-start is empirically better
 
 ## ⚙️ Configurações Importantes
 
@@ -285,7 +224,12 @@ SETUP_TIME = 0  # Comparação com literatura
 ### Papers e Livros
 
 - **JSSP**: Garey & Johnson "Computers and Intractability" (1979)
-- **Critical Path**: Kelley & Walker "CPM" (1959)
+- **SBP**: Adams, Balas & Zawack "The Shifting Bottleneck Procedure" (1988)
+- **Schrage**: Schrage "Greedy heuristic for single-machine scheduling" (1984)
+- **Carlier**: Carlier "Branch-and-bound for 1|r_j|Lmax" (1982)
+- **N2**: Nowicki & Smutnicki "i-TSAB" (1996)
+- **N5**: van Laarhoven, Aarts & Lenstra (1992)
+- **N7**: Dell'Amico & Trubian (1993)
 - **Local Search**: Aarts & Lenstra "Local Search in Combinatorial Optimization" (1997)
 - **Z3**: Bjørner & Phan "νZ - Maximal Satisfaction with Z3" (2014)
 
@@ -387,12 +331,14 @@ Ao voltar ao projeto após pausa:
 - [ ] Verificar ROADMAP.md para próximos passos
 - [ ] Rodar `stack build && stack run` (servidor na porta 3000)
 - [ ] Testar com `python script-python/solve_with_bottlenecks.py instances/AdamsBalasZawack1988/abz5.txt`
-- [ ] Verificar se resultado ainda é ~1451h (heurística) e ~1234h (Z3)
+- [ ] Verificar se resultado ainda é ~1312 (refined) e ~1334 (SBP)
 - [ ] Escolher feature do ROADMAP.md para implementar
 
 **Status de testes esperado**:
-- ft06: heurística ~69h, Z3 ~55-65h
-- la01: heurística ~880h, Z3 ~684h  
-- abz5: heurística ~1451h, Z3 ~1234-1250h
+- ft06: refined ~60, BKS=55
+- la01: refined ~666 OPT, BKS=666
+- abz5: refined ~1312, BKS=1234
+- abz9: refined ~801, BKS=661
+- ta71: refined ~5886, BKS=5464
 
 Se os resultados mudarem significativamente, algo regrediu! 🚨

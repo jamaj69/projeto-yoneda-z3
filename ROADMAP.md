@@ -1,422 +1,252 @@
 # 🗺️ Roadmap - Projeto Yoneda-Z3
 
-## Status Atual: v0.3.0 ✅
+## Status Atual: v0.4.0 ✅
 
 ### Funcionalidades Implementadas
 
-- ✅ **Servidor Haskell REST**: Scotty + algebraic-graphs
-- ✅ **Heurística MWR+SPT**: 77% melhor que toposort simples
-- ✅ **Z3 Integration**: Busca livre (hints apenas referência)
+- ✅ **Servidor Haskell REST**: Scotty + algebraic-graphs, porta 3000
+- ✅ **Phase 1a — MWR+SPT**: List scheduling, 77% melhor que toposort
+- ✅ **Phase 1b — Shifting Bottleneck Procedure**:
+  - Schrage heuristic para `1|r_j|max(C_j+q_j)`
+  - Carlier B&B com node budget (empiricamente budget=0 = pure Schrage)
+  - Iterative machine decomposition + single-pass re-optimization
+- ✅ **Phase 2 — Yoneda-fused Neighborhoods**:
+  - `newtype Yoneda f a` para fmap fusion O(1)
+  - N2 (adjacent swap), N5 (block rotation), N7 (task reinsertion)
+  - `greedySweep` carry-forward com `foldl'`
+  - `refinementPipeline` left-fold com convergência por estágio
+  - Adaptive: `firstImprovementSel` para n>500, `steepestDescent` para menores
+- ✅ **Phase 3 — Bottleneck Analysis**: Slack, critical path, machine utilization
+- ✅ **OR-Tools CP-SAT**: Full solver com `NewIntervalVar` + `AddNoOverlap`
 - ✅ **Benchmark Loader**: 242 instâncias de 8 datasets clássicos
-- ✅ **Análise de Gargalos**:
-  - Cálculo de slack (folga)
-  - Identificação de caminho crítico
-  - Análise de utilização de máquinas
-  - Detecção de bottlenecks (>85% uso)
-- ✅ **Documentação Técnica**: 4 guias completos
-- ✅ **Visualização**: Gráficos de Gantt comparativos
+- ✅ **Documentação Técnica**: 5 guias
+
+### Resultados Atuais (Haskell heurística pura)
+
+| Instance | Dim | MWR | SBP | Refined | BKS | Gap | Time |
+|----------|-----|-----|-----|---------|-----|-----|------|
+| ft06 | 6×6 | 69 | 60 | 60 | 55 | +9.1% | <0.1s |
+| la01 | 10×5 | 880 | 666 | **666** | 666 | **OPT** | <0.1s |
+| abz5 | 10×10 | 1451 | 1334 | 1312 | 1234 | +6.3% | 0.2s |
+| abz9 | 10×10 | 1132 | 849 | 801 | 661 | +21.2% | 2.5s |
+| dmu10 | 20×20 | 4765 | 4143 | 3621 | n/a | — | 4.3s |
+| ta71 | 100×20 | 8010 | 5930 | 5886 | 5464 | +7.7% | 24s |
+
+### Empirical Findings (tested and rejected)
+
+- ❌ **Carlier B&B depth/budget > 0**: Schrage already optimal per subproblem for all tested JSSP instances
+- ❌ **SBP convergence loop**: Schrage tie-breaking causes oscillation between equally-good orderings (abz9 regressed 801→821)
+- ❌ **OR-Tools warm-start from Haskell**: CP-SAT cold-start is empirically better; hints bias workers toward suboptimal neighborhoods
 
 ---
 
-## 🎯 Próximos Passos (v0.4.0)
+## 🎯 v0.5.0 — Haskell Engine Improvements
 
-### 1. Refinamento Local com Gargalos (ALTA PRIORIDADE)
+### 1. Replace `algebraic-graphs` with IntMap Adjacency (ALTA PRIORIDADE)
 
-**Objetivo**: Usar análise de gargalos para melhorar heurística antes do Z3
+**Problem**: `buildSolutionGraph` does a full `algebraic-graphs` rebuild (O(V log V)) on every `evalCandidate` call. For ta71 (2000 tasks), this is the dominant cost.
 
-#### A) Swap de Tarefas em Máquinas Críticas
+**Solution**: Replace with `IntMap IntSet` adjacency list:
+- O(1) amortized edge add/remove
+- Incremental swap: modify only 2-4 edges instead of rebuilding entire graph
+- Forward pass reuses unchanged portions
 
 ```haskell
--- Em Main.hs
-swapTasksOnCriticalMachine :: Machine -> [Task] -> Starts -> Maybe Starts
-swapTasksOnCriticalMachine m tasks starts =
-    -- Para máquinas com >90% de uso:
-    -- 1. Listar tarefas consecutivas na máquina
-    -- 2. Tentar trocar ordem de pares de tarefas
-    -- 3. Verificar se respeita precedências
-    -- 4. Recalcular makespan
-    -- 5. Aceitar se melhorou
+type AdjList = IntMap IntSet
+
+swapEdges :: AdjList -> Int -> Int -> AdjList
+-- O(1) amortized: disconnect old arcs, add new arcs
+
+incrementalForwardPass :: AdjList -> Map Int Int -> Int -> Int -> Map Int Int
+-- Recompute ESTs only for affected descendants
 ```
 
-**Teste esperado**:
+**Expected impact**:
+- `evalCandidate` from O(V log V) → O(affected nodes)
+- ta71: 24s → ~5s estimated
+- Enables more iterations in N2/N5/N7 within same time budget
 
-- abz5: 1451h → ~1350h (8% de melhoria adicional)
-- Tempo: +50ms (ainda muito rápido)
+### 2. Tabu Search over N2/N5 (ALTA PRIORIDADE)
 
-#### B) Shift de Tarefas Críticas
+**Problem**: Current neighborhoods converge to first local minimum. No mechanism to escape.
+
+**Solution**: Short-term memory tabu list prevents revisiting recent swaps:
 
 ```haskell
-shiftCriticalTask :: Task -> Slack -> Starts -> Maybe Starts
-shiftCriticalTask task slack starts =
-    -- Para tarefas críticas (slack=0):
-    -- Tentar mover ±duration dentro dos limites
-    -- Explorar janelas de slack vizinhas
+data TabuState = TabuState
+  { tsBest   :: SearchState
+  , tsCurrent :: SearchState
+  , tsTabu   :: Seq (Int, Int)  -- ring buffer of forbidden swap pairs
+  , tsIter   :: Int
+  }
+
+tabuSearch :: Int -> Int -> [TaskReq] -> Map Int TaskReq -> SearchState -> SearchState
+-- maxIter, tabuTenure, tasks, taskMap, initial -> best found
 ```
 
-**Benefício esperado**:
+**Key design decisions**:
+- Tabu tenure: `sqrt(n)` where n = number of tasks
+- Accept non-improving moves when all neighbors are tabu
+- Aspiration: accept tabu move if it improves global best
+- Budget: 1000 iterations for n≤100, 500 for n≤500, 200 for n>500
 
-- Encontrar soluções localmente ótimas
-- Reduzir gap Z3: 15% → 8%
+**Expected impact**: abz5: 1312→~1260, abz9: 801→~720
 
-#### C) Load Balancing Iterativo
+### 3. SBP with Disjunctive Graph Caching (MÉDIA PRIORIDADE)
+
+**Problem**: `shiftingBottleneck` rebuilds the full disjunctive graph for every `sbpOneMachine` call. For ta71 (20 machines × ~20 SBP calls = 400 graph rebuilds), this is expensive.
+
+**Solution**: Thread the graph through SBP iterations:
 
 ```haskell
-balanceMachineLoad :: [(Machine, [Task])] -> Starts
-balanceMachineLoad machines =
-    iterateUntil convergence $ \starts ->
-        let overloaded = filter (utilization > 0.85) machines
-            underloaded = filter (utilization < 0.50) machines
-        in tryMoveTask overloaded underloaded starts
+shiftingBottleneck' :: [TaskReq] -> AdjList -> MachineOrder -> (MachineOrder, AdjList)
+-- Carry forward the graph, only add/modify disjunction arcs for newly scheduled machine
 ```
 
-**Resultado esperado**:
+**Expected impact**: SBP phase from ~8s → ~2s for ta71
 
-- Máquinas mais equilibradas (60% → 75% uso médio)
-- Redução de gargalos
+### 4. Better Schrage Tie-Breaking (MÉDIA PRIORIDADE)
 
-**Meta**: Implementar em 1-2 dias
+**Problem**: When multiple released jobs have equal `q`, Schrage picks arbitrarily. This creates the oscillation that prevents SBP convergence.
 
----
-
-### 2. Sistema de Aprendizado por Feedback (ALTA PRIORIDADE) 🆕
-
-**Objetivo**: Haskell aprende com a diferença entre sua heurística e a solução ótima do Z3
-
-**Documentação**: [docs/FEEDBACK_LEARNING.md](docs/FEEDBACK_LEARNING.md)
-
-#### Arquitetura
-
-```
-Python → POST /validate → Haskell (heurística)
-   ↓                           ↓
-  Z3                        makespan=1451h
-   ↓                             ↑
-makespan=1234h                   |
-   ↓                             |
-Python → POST /learn → Haskell (compara + aprende)
-```
-
-#### A) Endpoint `/learn` (Main.hs)
+**Solution**: Composite tie-breaker: `(negate q, remaining_work, spt, task_id)`:
 
 ```haskell
-post "/learn" $ do
-    req <- jsonData :: ActionM LearnRequest
-    let optSol = optimal_solution req
-        tasks' = tasks req
-    
-    -- Recalcula heurística
-    let (hStarts, hMakespan, ...) = solveHeuristic tasks'
-    
-    -- Compara ordenação em máquinas
-    let machineComps = compareTaskOrdering tasks' hStarts (optimal_starts optSol)
-    
-    -- Analisa prioridades incorretas
-    let priorityIssues = analyzeTaskPriorities tasks' hStarts (optimal_starts optSol)
-    
-    -- Avalia detecção de gargalos
-    let bottleneckAcc = evaluateBottleneckDetection tasks' hStarts (optimal_starts optSol)
-    
-    -- Gera sugestões
-    let adjustments = generateHeuristicAdjustments insights
-    
-    json $ object ["learned" .= True, "insights" .= insights]
+schrageSM' :: [SMJob] -> Map Int Int -> ([Int], Int)
+-- Extra parameter: remaining work per job for tie-breaking
 ```
 
-**Análises implementadas**:
+**Expected impact**: SBP convergence may become feasible → better SBP-only results before N2/N5/N7
 
-- Comparação de ordenação de tarefas em cada máquina
-- Identificação de swaps necessários
-- Avaliação de prioridades (MWR vs SPT)
-- Precisão na detecção de gargalos (accuracy score)
-- Sugestões de ajuste de pesos
+### 5. Parallel Neighborhood Evaluation (BAIXA PRIORIDADE)
 
-#### B) Cliente Python (learn_from_z3.py)
+**Problem**: N7 generates up to 500 candidates, evaluated sequentially.
 
-```python
-# Após resolver com Z3
-z3_solution = {tid: m[starts[tid]].as_long() for tid in starts}
+**Solution**: Use `Control.Parallel.Strategies` for parallel candidate evaluation:
 
-# Envia feedback
-insights = send_learning_feedback(tasks, z3_solution, z3_makespan, z3_time)
-
-# Relatório de aprendizado
-print_learning_report(insights)  # Gap, swaps, sugestões
+```haskell
+n7Parallel :: [TaskReq] -> Map Int TaskReq -> SearchState -> SearchState
+n7Parallel tasks taskMap ss =
+  let candidates = generateN7Candidates tasks taskMap ss
+      evaluated = parMap rseq (evalCandidate tasks taskMap ss) candidates
+  in minimumBy (comparing ssMS) (catMaybes evaluated)
 ```
 
-**Funcionalidades**:
+**Expected impact**: 2-4× speedup on N7 phase for multi-core systems. Only worthwhile after IntMap adjacency (item 1) reduces per-candidate cost.
 
-- ✅ Análise manual Python-side (v0.4.0) — **JÁ IMPLEMENTADO**
-- ⏳ Endpoint /learn no Haskell (v0.4.1)
-- ⏳ Persistência em arquivo JSON (v0.5.0)
-- ⏳ Aplicação de pesos aprendidos (v0.5.0)
+### 6. Instance-Adaptive Phase Selection (BAIXA PRIORIDADE)
 
-#### C) Tipos de Dados (Types.hs)
+**Problem**: Fixed pipeline (MWR→SBP→N2→N5→N7) regardless of instance structure. Some instances respond better to different orderings.
 
-Adicionar tipos (veja `docs/FeedbackTypes.hs`):
+**Solution**: Quick feature extraction → phase selection:
 
-- `OptimalSolution`: Solução do Z3
-- `LearningInsights`: Análise comparativa
-- `MachineComparison`: Ordenação heurística vs ótima
-- `TaskPriority`: Prioridades incorretas
-- `BottleneckAccuracy`: Precisão de detecção
-- `HeuristicAdjustment`: Sugestões de melhoria
+```haskell
+data InstanceFeatures = InstanceFeatures
+  { ifJobMachineRatio :: Double
+  , ifDurationVariance :: Double
+  , ifMachineContention :: Double  -- avg tasks per machine
+  }
 
-#### Testes
-
-```bash
-# Testar com ftø06 (6×6, rápido)
-python script-python/learn_from_z3.py instances/FisherThompson1963/ft06.txt
-
-# Testar com abz5 (10×10, benchmark principal)
-python script-python/learn_from_z3.py instances/AdamsBalasZawack1988/abz5.txt
+selectPipeline :: InstanceFeatures -> [(Int, Neighborhood)]
+-- High contention → more N2/N5 iterations
+-- High variance → SBP more valuable
+-- Low ratio → skip N7 (too expensive for marginal gain)
 ```
-
-**Resultado esperado (análise manual)**:
-
-```
-🎯 Desempenho:
-   Heurística: 1451h
-   Ótimo (Z3): 1234h
-   Gap: 217h (17.6%)
-
-🔄 Máquinas com Ordenação Diferente:
-   Máquina 3:
-      Heurística: [8, 15, 23, 31, 45]
-      Ótimo:      [8, 23, 15, 31, 45]
-      ⚠️  2 swaps necessários
-
-💡 Sugestões de Ajuste:
-   • Muitas trocas detectadas. Priorize tarefas mais curtas.
-     Tipo: IncreaseSPTWeight (+30%)
-```
-
-#### Evolução Esperada (após aprendizado)
-
-| Iteração | Gap Médio | Acurácia Gargalos |
-|----------|-----------|-------------------|
-| Inicial  | 17%       | 70%               |
-| 10 inst  | 14%       | 80%               |
-| 50 inst  | 9%        | 90%               |
-| 200 inst | 5%        | 95%               |
-
-**Meta**: Gap 17% → 9% após 50 instâncias  
-**Tempo de implementação**: 2-3 dias (endpoint + persistência)
 
 ---
 
-### 2. Otimização Z3 Focada (MÉDIA PRIORIDADE)
+## 🚀 Futuro (v0.6.0+)
 
-**Objetivo**: Usar bottlenecks para reduzir espaço de busca do Z3
+### 1. Simulated Annealing / Late Acceptance Hill Climbing
 
-#### Estratégia 1: Fixar Tarefas Não-Críticas
+- Accept worsening moves with probability `exp(-delta/T)`
+- LAHC: accept if better than solution k iterations ago
+- More robust than tabu search for large instances
 
-```python
-# Em example_usage.py
-def optimize_with_fixed_tasks(tasks, hints, slacks, critical_path):
-    opt = Optimize()
-    
-    # Fixar 95% das tarefas (não-críticas)
-    for task in non_critical_tasks:
-        opt.add(starts[task.id] == hints[task.id])
-    
-    # Otimizar apenas 5% (críticas)
-    for task in critical_tasks:
-        pass  # Deixar livre
-    
-    return opt.minimize(makespan)
-```
-
-**Benefício**:
-
-- ✅ Espaço de busca: O(n^n) → O((0.05n)^n) = **redução massiva**
-- ✅ Tempo: 10s → ~2s (5x mais rápido)
-- ⚠️ Risco: Pode perder ótimo global se análise de slack estiver imprecisa
-
-#### Estratégia 2: Priorizar Branching em Tarefas Críticas
-
-```python
-# Z3 táticas customizadas
-opt.set("priority", "critical_path_first")
-opt.set("search_mode", "depth_first_critical")
-```
-
-**Meta**: Implementar em 2-3 dias
-
----
-
-### 3. Visualização de Gargalos (BAIXA PRIORIDADE)
-
-**Objetivo**: Tornar análise de bottlenecks visual
-
-#### Gráfico de Gantt com Slack
-
-```python
-import matplotlib.pyplot as plt
-
-def plot_with_critical_path(solution, slacks):
-    for task in solution:
-        # Cor baseada em slack
-        color = 'red' if slacks[task.id] == 0 else \
-                'orange' if slacks[task.id] < 10 else \
-                'green'
-        
-        plt.barh(task.machine, task.duration, 
-                left=task.start, color=color, alpha=0.8)
-    
-    # Destacar caminho crítico
-    for task in critical_path:
-        plt.scatter(task.start, task.machine, 
-                   color='black', marker='>', s=100)
-```
-
-**Saída visual**:
-
-- 🔴 Vermelho: Tarefas críticas (slack=0)
-- 🟠 Laranja: Quase críticas (slack<10)
-- 🟢 Verde: Com folga (slack≥10)
-- ➡️ Setas: Caminho crítico
-
-#### Gráfico de Utilização
-
-```python
-def plot_machine_utilization(machine_util):
-    machines = sorted(machine_util.keys())
-    utils = [machine_util[m] * 100 for m in machines]
-    
-    colors = ['red' if u > 90 else 
-              'orange' if u > 70 else 
-              'green' for u in utils]
-    
-    plt.bar(machines, utils, color=colors)
-    plt.axhline(y=90, color='r', linestyle='--', label='Gargalo')
-    plt.ylabel('Utilização (%)')
-    plt.title('Análise de Gargalos - Máquinas')
-```
-
-**Meta**: Implementar em 1 dia
-
----
-
-## 🚀 Futuro (v0.5.0+)
-
-### 1. Heurísticas Alternativas
-
-- **Tabu Search**: Memória de movimentos ruins
-- **Simulated Annealing**: Aceitar pioras probabilisticamente
-- **Genetic Algorithm**: População de soluções
-
-### 2. Paralelização
+### 2. Parallelização
 
 - Resolver múltiplas instâncias em paralelo
-- Z3 com múltiplos cores (`opt.set("threads", 4)`)
-- Batch processing de benchmarks
+- Multi-start: run N independent refinement pipelines, keep best
+- OR-Tools: `solver.parameters.num_workers` for internal parallelism
 
-### 3. Interface Web
+### 3. Machine Learning para Dispatching
 
-- Dashboard com visualizações interativas
+- Treinar modelo em pares (instance_features, optimal_ordering)
+- Substituir MWR+SPT por learned priority function
+- Usar dados dos 242 benchmarks como training set
+
+### 4. Interface Web
+
+- Dashboard com visualizações interativas (Gantt, utilização)
 - Upload de instâncias customizadas
-- Comparação de heurísticas lado a lado
-
-### 4. Machine Learning
-
-- Aprender prioridades de dispatching regras
-- Prever makespan antes de resolver
-- Classificar instâncias fáceis/difíceis
+- Comparação side-by-side: heurística vs solver
 
 ---
 
 ## 📊 Métricas de Sucesso
 
-### v0.4.0 (Refinamento Local)
+### v0.5.0 (Engine Improvements)
 
-| Métrica | Atual (v0.3.0) | Meta (v0.4.0) | Melhoria |
-| ------- | -------------- | ------------- | -------- |
-| **Makespan abz5** | 1451h | ≤1350h | -7% |
-| **Gap vs Z3** | 15% | ≤10% | -33% |
-| **Tempo Heurística** | 8ms | ≤60ms | +650% OK |
-| **Uso médio máquinas** | 60% | ≥70% | +17% |
+| Métrica | Atual (v0.4.0) | Meta (v0.5.0) |
+| ------- | -------------- | ------------- |
+| **abz5** | 1312 | ≤1260 (-4%) |
+| **abz9** | 801 | ≤720 (-10%) |
+| **ta71** | 5886 | ≤5700 (-3%) |
+| **ta71 time** | 24s | ≤8s (-67%) |
+| **la01** | 666 OPT | 666 OPT (maintain) |
 
-### v0.5.0 (Z3 Focado)
+### v0.6.0 (Advanced Search)
 
-| Métrica | Atual (v0.3.0) | Meta (v0.5.0) | Melhoria |
-| ------- | -------------- | ------------- | -------- |
-| **Tempo Z3** | 10s | ≤3s | -70% |
-| **Qualidade** | 1234h | 1234h | Mantém ótimo |
-| **Espaço busca** | 100% | ~10% | -90% |
+| Métrica | Meta |
+| ------- | ---- |
+| **abz5** | ≤1240 (≤0.5% gap) |
+| **ta71** | ≤5550 (≤1.6% gap) |
+| **Instances at OPT** | ≥3 of benchmark set |
 
 ---
 
 ## 🎓 Aprendizados e Insights
 
-### Do que funcionou bem
+### O que funcionou
 
-1. **MWR+SPT**: Melhoria drástica com lógica simples
-2. **Z3 sem hints**: Remover constraints foi contra-intuitivo mas correto
-3. **Benchmarks**: 242 instâncias dão confiança estatística
-4. **Análise de slack**: Revela estrutura do problema
+1. **Yoneda fmap fusion**: Elimina listas intermediárias nos pipelines de vizinhança
+2. **greedySweep carry-forward**: Permite cadeias dependentes de swaps (la01→OPT)
+3. **Phase composition**: MWR→SBP→N2→N5→N7 dá reduções compostas
+4. **Adaptive budgets**: `firstImprovementSel` para instâncias grandes evita explosão quadrática
 
-### Do que precisa de atenção
+### O que não funcionou
 
-1. **Slack calculation**: Apenas 1 tarefa crítica em abz5 parece baixo
-   - Pode ser erro no cálculo de LST (Latest Start Time)
-   - Revisar algoritmo reverso de computação
-2. **Z3 non-determinism**: 1234h vs 1250h (~1% variação)
-   - Aceitável para prática, mas investigar se há erro lógico
-3. **Setup time**: Atualmente fixo (0), poderia ser por job/máquina
+1. **Carlier B&B**: Para subproblemas JSSP, Schrage já é ótimo (Jackson LB = Schrage UB)
+2. **SBP convergence loop**: Schrage tie-breaking causa ciclos entre soluções equivalentes
+3. **OR-Tools warm-start**: CP-SAT's portfolio solver is already better cold
 
----
+### Observações técnicas
 
-## 📅 Timeline Proposto
-
-```text
-Semana 1-2:  Implementar refinamento local (swaps + shifts)
-Semana 3:    Testes em todos os 242 benchmarks
-Semana 4:    Otimização Z3 focada (fixar não-críticas)
-Semana 5:    Visualizações de gargalos
-Semana 6:    Documentação final + paper draft
-```
+1. **Bottleneck real**: `algebraic-graphs` rebuild é O(V log V) por candidato — domina custo
+2. **N7 é caro mas efetivo**: Reinserção em todas as posições encontra melhorias que N2/N5 perdem
+3. **SBP vs MWR**: SBP é consistentemente melhor, mas o ganho vem mais da decomposição do que do Carlier
 
 ---
 
-## 🤝 Como Contribuir
+## 📖 Referências
 
-Se você quiser implementar alguma dessas features:
+### Implementados
 
-1. Escolha um item da lista acima
-2. Crie uma branch: `git checkout -b feature/nome-da-feature`
-3. Implemente + testes + documentação
-4. Pull request com descrição detalhada
+- Adams, Balas & Zawack (1988): Shifting Bottleneck Procedure
+- Schrage (1984): Greedy heuristic for single-machine scheduling
+- Carlier (1982): Branch-and-bound for `1|r_j|Lmax`
+- Nowicki & Smutnicki (1996): N2 neighborhood (i-TSAB)
+- van Laarhoven, Aarts & Lenstra (1992): N5 neighborhood
+- Dell'Amico & Trubian (1993): N7 neighborhood
 
-**Prioridades sugeridas**:
+### Para implementação futura
 
-- 🔥 Alta: Refinamento local (impacto imediato)
-- 🔶 Média: Z3 focado (otimização importante)
-- 🔹 Baixa: Visualizações (nice to have)
-
----
-
-## 📖 Referências para Implementação
-
-### Refinamento Local
-
-- Aarts & Lenstra (1997): "Local Search in Combinatorial Optimization"
-- Taillard (1993): Tabu search original para JSSP
-- Nowicki & Smutnicki (1996): i-TSAB algorithm
-
-### Critical Path Analysis
-
-- Kelley & Walker (1959): CPM (Critical Path Method)
-- Roy (1959): PERT analysis
-- Johnson (1954): Algorithms for JSSP
-
-### Z3 Optimization
-
-- Bjørner & Phan (2014): "νZ - Maximal Satisfaction with Z3"
-- SMT-LIB 2.0: Optimization extensions
-- Microsoft Z3 Documentation: Tactics & Strategies
+- Nowicki & Smutnicki (2005): Path relinking for JSSP
+- Balas & Vazacopoulos (1998): Guided Local Search
+- Zhang, Gao & Shi (2007): Tabu search with N5+N7
 
 ---
 
-**Última atualização**: 2026-04-01  
-**Versão**: 0.3.0  
+**Última atualização**: 2026-03-30
+**Versão**: 0.4.0
 **Status**: 🟢 Ativo
