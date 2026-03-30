@@ -8,6 +8,25 @@ and this project adheres to the
 
 ## Unreleased
 
+### Added (Proposta v0.4.0)
+
+- 🧠 **Sistema de Aprendizado por Feedback** (Haskell ↔ Z3)
+  - Arquitetura para Haskell aprender com soluções ótimas do Z3
+  - Documentação completa: [FEEDBACK_LEARNING.md](docs/FEEDBACK_LEARNING.md)
+  - Tipos de dados: `docs/FeedbackTypes.hs` (exemplo para implementação futura)
+  - Script Python `learn_from_z3.py` com análise manual Python-side (**funcional**)
+  - **Análises implementadas (Python-side)**:
+    - Comparação de ordenação de tarefas por máquina
+    - Detecção de swaps necessários (pares invertidos)
+    - Avaliação de gap heurística vs ótimo
+    - Sugestões automáticas de ajuste (IncreaseMWRWeight, IncreaseSPTWeight)
+  - **Próximos passos**:
+    - [ ] Implementar endpoint `/learn` em Main.hs
+    - [ ] Adicionar tipos em Types.hs
+    - [ ] Persistência de pesos aprendidos (learning_history.json)
+    - [ ] Aplicar pesos customizados na heurística
+  - **Impacto esperado**: Gap 17% → 9% após 50 instâncias
+
 ## 0.3.0.0 - 2026-04-01
 
 ### Added

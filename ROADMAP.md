@@ -78,6 +78,132 @@ balanceMachineLoad machines =
 
 ---
 
+### 2. Sistema de Aprendizado por Feedback (ALTA PRIORIDADE) 🆕
+
+**Objetivo**: Haskell aprende com a diferença entre sua heurística e a solução ótima do Z3
+
+**Documentação**: [docs/FEEDBACK_LEARNING.md](docs/FEEDBACK_LEARNING.md)
+
+#### Arquitetura
+
+```
+Python → POST /validate → Haskell (heurística)
+   ↓                           ↓
+  Z3                        makespan=1451h
+   ↓                             ↑
+makespan=1234h                   |
+   ↓                             |
+Python → POST /learn → Haskell (compara + aprende)
+```
+
+#### A) Endpoint `/learn` (Main.hs)
+
+```haskell
+post "/learn" $ do
+    req <- jsonData :: ActionM LearnRequest
+    let optSol = optimal_solution req
+        tasks' = tasks req
+    
+    -- Recalcula heurística
+    let (hStarts, hMakespan, ...) = solveHeuristic tasks'
+    
+    -- Compara ordenação em máquinas
+    let machineComps = compareTaskOrdering tasks' hStarts (optimal_starts optSol)
+    
+    -- Analisa prioridades incorretas
+    let priorityIssues = analyzeTaskPriorities tasks' hStarts (optimal_starts optSol)
+    
+    -- Avalia detecção de gargalos
+    let bottleneckAcc = evaluateBottleneckDetection tasks' hStarts (optimal_starts optSol)
+    
+    -- Gera sugestões
+    let adjustments = generateHeuristicAdjustments insights
+    
+    json $ object ["learned" .= True, "insights" .= insights]
+```
+
+**Análises implementadas**:
+
+- Comparação de ordenação de tarefas em cada máquina
+- Identificação de swaps necessários
+- Avaliação de prioridades (MWR vs SPT)
+- Precisão na detecção de gargalos (accuracy score)
+- Sugestões de ajuste de pesos
+
+#### B) Cliente Python (learn_from_z3.py)
+
+```python
+# Após resolver com Z3
+z3_solution = {tid: m[starts[tid]].as_long() for tid in starts}
+
+# Envia feedback
+insights = send_learning_feedback(tasks, z3_solution, z3_makespan, z3_time)
+
+# Relatório de aprendizado
+print_learning_report(insights)  # Gap, swaps, sugestões
+```
+
+**Funcionalidades**:
+
+- ✅ Análise manual Python-side (v0.4.0) — **JÁ IMPLEMENTADO**
+- ⏳ Endpoint /learn no Haskell (v0.4.1)
+- ⏳ Persistência em arquivo JSON (v0.5.0)
+- ⏳ Aplicação de pesos aprendidos (v0.5.0)
+
+#### C) Tipos de Dados (Types.hs)
+
+Adicionar tipos (veja `docs/FeedbackTypes.hs`):
+
+- `OptimalSolution`: Solução do Z3
+- `LearningInsights`: Análise comparativa
+- `MachineComparison`: Ordenação heurística vs ótima
+- `TaskPriority`: Prioridades incorretas
+- `BottleneckAccuracy`: Precisão de detecção
+- `HeuristicAdjustment`: Sugestões de melhoria
+
+#### Testes
+
+```bash
+# Testar com ftø06 (6×6, rápido)
+python script-python/learn_from_z3.py instances/FisherThompson1963/ft06.txt
+
+# Testar com abz5 (10×10, benchmark principal)
+python script-python/learn_from_z3.py instances/AdamsBalasZawack1988/abz5.txt
+```
+
+**Resultado esperado (análise manual)**:
+
+```
+🎯 Desempenho:
+   Heurística: 1451h
+   Ótimo (Z3): 1234h
+   Gap: 217h (17.6%)
+
+🔄 Máquinas com Ordenação Diferente:
+   Máquina 3:
+      Heurística: [8, 15, 23, 31, 45]
+      Ótimo:      [8, 23, 15, 31, 45]
+      ⚠️  2 swaps necessários
+
+💡 Sugestões de Ajuste:
+   • Muitas trocas detectadas. Priorize tarefas mais curtas.
+     Tipo: IncreaseSPTWeight (+30%)
+```
+
+#### Evolução Esperada (após aprendizado)
+
+| Iteração | Gap Médio | Acurácia Gargalos |
+|----------|-----------|-------------------|
+| Inicial  | 17%       | 70%               |
+| 10 inst  | 14%       | 80%               |
+| 50 inst  | 9%        | 90%               |
+| 200 inst | 5%        | 95%               |
+
+**Meta**: Gap 17% → 9% após 50 instâncias  
+**Tempo de implementação**: 2-3 dias (endpoint + persistência)
+
+---
+
 ### 2. Otimização Z3 Focada (MÉDIA PRIORIDADE)
 
 **Objetivo**: Usar bottlenecks para reduzir espaço de busca do Z3
