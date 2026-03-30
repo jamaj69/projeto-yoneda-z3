@@ -44,9 +44,7 @@
     "**/venv": true
   },
   "ltex.language": "pt-BR",
-  "ltex.enabled": [
-    "markdown"
-  ],
+  "ltex.enabled": [],
   "ltex.additionalRules.motherTongue": "pt-BR",
   "ltex.dictionary": {
     "pt-BR": [
@@ -136,7 +134,21 @@
       "ABREVIATIONS_PUNCTUATION",
       "SPACES_BETWEEN_OPERATORS",
       "REPEATED_WORDS_3X",
-      "BARBARISMS"
+      "BARBARISMS",
+      "CHEMICAL_FORMULAS_TYPOGRAPHY",
+      "GENERAL_NUMBER_FORMAT",
+      "INFORMALITIES",
+      "ORDINAL_ABREVIATION",
+      "VERB_COMMA_CONJUNCTION",
+      "CACOPHONY",
+      "WHITESPACE_RULE",
+      "PT_WORDINESS_REPLACE",
+      "GENERAL_GENDER_AGREEMENT_ERRORS",
+      "PT_BR_SIMPLE_REPLACE",
+      "WORD_CONTAINS_UNDERSCORE",
+      "GENERAL_NUMBER_AGREEMENT_ERRORS",
+      "GENERAL_VERB_AGREEMENT_ERRORS",
+      "DOUBLE_PUNCTUATION"
     ]
   },
   "terminal.integrated.environmentChangesRelaunch": false,
